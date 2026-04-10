@@ -1,0 +1,93 @@
+server:
+  port: 5922
+
+spring:
+  application:
+    name: DriftingLeaves
+  profiles:
+    active: prod #环境配置dev/prod
+  threads:
+    virtual:
+      enabled: true #启用虚拟线程
+  main:
+    allow-circular-references: true #允许循环引用
+  servlet:
+    multipart:
+      max-file-size: 15MB      # 单个文件最大大小
+      max-request-size: 50MB   # 请求体最大大小
+  #数据库连接信息
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: ${dl.datasource.driver-class-name}
+    url: jdbc:mysql://${dl.datasource.host}:${dl.datasource.port}/${dl.datasource.database}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${dl.datasource.username}
+    password: ${dl.datasource.password}
+    # Druid连接池专用配置
+    druid:
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      max-wait: 60000
+  data:
+    redis:
+      host: ${dl.redis.host}
+      port: ${dl.redis.port}
+      password: ${dl.redis.password}
+      database: ${dl.redis.database}
+
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: ${dl.mail.username} # qq邮箱
+    password: ${dl.mail.password} # 邮箱授权码
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 3000
+          writetimeout: 5000
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml #扫描的 mapper 文件
+  # 全局配置
+  configuration:
+    map-underscore-to-camel-case: true #驼峰命名
+    # 数据库字段映射
+  global-config:
+    db-config:
+      id-type: auto # 主键自增
+
+dl:
+  jwt:
+    # 设置jwt签名加密时使用的秘钥
+    secret-key: ${dl.jwt.secret-key}
+    # 设置jwt过期时间
+    ttl: ${dl.jwt.ttl}
+    # 设置前端传递过来的令牌名称
+    token-name: Authorization
+  alioss:
+    endpoint: ${dl.alioss.endpoint}
+    access-key-id: ${dl.alioss.access-key-id}
+    access-key-secret: ${dl.alioss.access-key-secret}
+    bucket-name: ${dl.alioss.bucket-name}
+  email:
+    personal: ${dl.email.personal}  #SMTP邮件发送者昵称
+    from: ${dl.email.from}  #SMTP邮件发送者邮箱，跟上面那个邮箱配置的username一致即可
+  visitor:
+    verify-code: ${dl.visitor.verify-code}  #管理端游客登录用的邮箱验证码
+  image:
+    compress:
+      enabled: true           # 是否启用图片压缩
+      max-size-kb: 500          # 最大500KB
+      quality: 0.9              # 压缩质量(0-1)
+      output-format: webp       # 输出格式: webp
+  website:
+    title: ${dl.website.title}      # 网站标题(或你的昵称)
+    home: ${dl.website.home}       # 首页地址
+    admin: ${dl.website.admin}       # 后台管理地址
+    cv: ${dl.website.cv}         # 个人简历地址
+    blog: ${dl.website.blog}        # 博客地址
