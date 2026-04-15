@@ -6,6 +6,8 @@ Thank you for your interest in contributing to the DriftingLeaves project! This 
 
 **Live Demo**: [https://driftingleaves.xyz](https://driftingleaves.xyz)
 
+**[中文文档](CONTRIBUTING.zh-CN.md)**
+
 ## Table of Contents
 
 - [Code of Conduct](#code-of-conduct)
