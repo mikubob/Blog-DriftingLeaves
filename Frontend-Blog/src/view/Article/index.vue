@@ -788,7 +788,8 @@ onMounted(() => {
   min-width: 0;
 }
 .article-sidebar {
-  width: 260px;
+  width: 300px;
+  max-width: 300px;
   flex-shrink: 0;
   position: sticky;
   top: 74px;
