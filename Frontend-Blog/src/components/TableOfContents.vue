@@ -18,6 +18,7 @@ const bodyOverflow = ref('')
 let mediaQuery = null
 let mediaQueryListener = null
 let contentObserver = null
+let headingObserver = null
 
 const isDark = computed(() => {
   if (themeStore.mode === 'dark') return true
@@ -38,10 +39,51 @@ const syncMobileState = (matches) => {
   }
 }
 
+const computeActiveHeading = () => {
+  const offset = getHeaderOffset() + 8
+
+  for (let i = headings.value.length - 1; i >= 0; i--) {
+    const el = headings.value[i].element
+    if (el && el.getBoundingClientRect().top <= offset) {
+      activeId.value = headings.value[i].id
+      return
+    }
+  }
+
+  activeId.value = headings.value[0]?.id ?? ''
+}
+
+const setupHeadingObserver = () => {
+  headingObserver?.disconnect()
+
+  if (!headings.value.length || typeof IntersectionObserver === 'undefined') {
+    computeActiveHeading()
+    return
+  }
+
+  headingObserver = new IntersectionObserver(
+    () => {
+      computeActiveHeading()
+    },
+    {
+      root: null,
+      rootMargin: `-${getHeaderOffset() + 8}px 0px 0px 0px`,
+      threshold: 0
+    }
+  )
+
+  headings.value.forEach((item) => {
+    headingObserver?.observe(item.element)
+  })
+
+  computeActiveHeading()
+}
+
 const extractHeadings = () => {
   nextTick(() => {
     const el = document.querySelector('.article-content')
     if (!el) {
+      headingObserver?.disconnect()
       headings.value = []
       activeId.value = ''
       return
@@ -64,7 +106,7 @@ const extractHeadings = () => {
     })
 
     headings.value = list
-    handleScroll()
+    setupHeadingObserver()
   })
 }
 
@@ -80,22 +122,6 @@ const observeContent = () => {
     childList: true,
     subtree: true
   })
-}
-
-const handleScroll = () => {
-  const offset = getHeaderOffset() + 8
-
-  for (let i = headings.value.length - 1; i >= 0; i--) {
-    const el = headings.value[i].element
-    if (el && el.getBoundingClientRect().top <= offset) {
-      activeId.value = headings.value[i].id
-      return
-    }
-  }
-
-  if (headings.value.length) {
-    activeId.value = headings.value[0].id
-  }
 }
 
 const closeMobileToc = () => {
@@ -161,18 +187,19 @@ watch(mobileOpen, (open) => {
 onMounted(() => {
   observeContent()
   extractHeadings()
-  handleScroll()
 
   mediaQuery = window.matchMedia('(max-width: 960px)')
   syncMobileState(mediaQuery.matches)
-  mediaQueryListener = (event) => syncMobileState(event.matches)
+  mediaQueryListener = (event) => {
+    syncMobileState(event.matches)
+    setupHeadingObserver()
+  }
   mediaQuery.addEventListener('change', mediaQueryListener)
-
-  window.addEventListener('scroll', handleScroll, { passive: true })
 })
 
 onUnmounted(() => {
   contentObserver?.disconnect()
+  headingObserver?.disconnect()
 
   if (mediaQuery && mediaQueryListener) {
     mediaQuery.removeEventListener('change', mediaQueryListener)
@@ -181,8 +208,6 @@ onUnmounted(() => {
   if (typeof document !== 'undefined') {
     document.body.style.overflow = bodyOverflow.value
   }
-
-  window.removeEventListener('scroll', handleScroll)
 })
 </script>
 
