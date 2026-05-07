@@ -17,6 +17,7 @@ const bodyOverflow = ref('')
 
 let mediaQuery = null
 let mediaQueryListener = null
+let contentObserver = null
 
 const isDark = computed(() => {
   if (themeStore.mode === 'dark') return true
@@ -40,19 +41,25 @@ const syncMobileState = (matches) => {
 const extractHeadings = () => {
   nextTick(() => {
     const el = document.querySelector('.article-content')
-    if (!el) return
+    if (!el) {
+      headings.value = []
+      activeId.value = ''
+      return
+    }
 
     const nodes = el.querySelectorAll('h1, h2, h3, h4')
     const list = []
 
     nodes.forEach((node, idx) => {
-      const id = node.id || `heading-${idx}`
-      node.id = id
+      const text = node.textContent.trim()
+      const tocId = `toc-heading-${idx + 1}`
+
       node.style.scrollMarginTop = `${getHeaderOffset()}px`
       list.push({
-        id,
-        text: node.textContent.trim(),
-        level: parseInt(node.tagName.charAt(1), 10)
+        id: tocId,
+        text,
+        level: parseInt(node.tagName.charAt(1), 10),
+        element: node
       })
     })
 
@@ -61,11 +68,25 @@ const extractHeadings = () => {
   })
 }
 
+const observeContent = () => {
+  const el = document.querySelector('.article-content')
+  if (!el) return
+
+  contentObserver?.disconnect()
+  contentObserver = new MutationObserver(() => {
+    extractHeadings()
+  })
+  contentObserver.observe(el, {
+    childList: true,
+    subtree: true
+  })
+}
+
 const handleScroll = () => {
   const offset = getHeaderOffset() + 8
 
   for (let i = headings.value.length - 1; i >= 0; i--) {
-    const el = document.getElementById(headings.value[i].id)
+    const el = headings.value[i].element
     if (el && el.getBoundingClientRect().top <= offset) {
       activeId.value = headings.value[i].id
       return
@@ -86,7 +107,8 @@ const openMobileToc = () => {
 }
 
 const scrollTo = (id) => {
-  const el = document.getElementById(id)
+  const target = headings.value.find((item) => item.id === id)
+  const el = target?.element
   if (el) {
     const top =
       window.scrollY + el.getBoundingClientRect().top - getHeaderOffset()
@@ -111,7 +133,13 @@ const scrollActiveIntoView = (containerRef) => {
   })
 }
 
-watch(() => props.contentHtml, extractHeadings)
+watch(
+  () => props.contentHtml,
+  () => {
+    observeContent()
+    extractHeadings()
+  }
+)
 
 watch(activeId, () => {
   scrollActiveIntoView(tocBodyRef)
@@ -131,6 +159,7 @@ watch(mobileOpen, (open) => {
 })
 
 onMounted(() => {
+  observeContent()
   extractHeadings()
   handleScroll()
 
@@ -143,6 +172,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  contentObserver?.disconnect()
+
   if (mediaQuery && mediaQueryListener) {
     mediaQuery.removeEventListener('change', mediaQueryListener)
   }
