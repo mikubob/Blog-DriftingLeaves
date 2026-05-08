@@ -305,6 +305,9 @@ html.dark .el-input__wrapper {
 /* === 暗色模式 — 全局 scoped 组件覆盖 === */
 html.dark .side-card,
 html.dark .article-card,
+html.dark .hot-section,
+html.dark .hot-lead,
+html.dark .hot-item,
 html.dark .content-card,
 html.dark .about-card,
 html.dark .search-result-tip,
@@ -323,6 +326,10 @@ html.dark .msg-item-card {
 
 html.dark .info-name,
 html.dark .card-title,
+html.dark .hot-title,
+html.dark .hot-lead-title,
+html.dark .hot-item-title,
+html.dark .hot-rank,
 html.dark .stat-num,
 html.dark .sg-val,
 html.dark .modal-item,
@@ -338,6 +345,9 @@ html.dark .music-panel-name {
 html.dark .info-tag,
 html.dark .stat-label,
 html.dark .sg-label,
+html.dark .hot-kicker,
+html.dark .hot-title-note,
+html.dark .hot-item-rank,
 html.dark .card-meta,
 html.dark .card-date,
 html.dark .card-summary,
@@ -355,6 +365,8 @@ html.dark .card-header {
 }
 
 html.dark .card-category,
+html.dark .hot-category,
+html.dark .hot-item-category,
 html.dark .nav-mobile-link,
 html.dark .social-link,
 html.dark .card-tag {
@@ -416,6 +428,50 @@ html.dark .sk-line {
 
 html.dark .card-tag {
   background: #333 !important;
+}
+html.dark .hot-switch {
+  background: #2a2a2a !important;
+}
+html.dark .hot-lead-wrap,
+html.dark .hot-item {
+  background: var(--blog-card) !important;
+  border-color: var(--blog-border) !important;
+}
+html.dark .hot-switch-btn.active {
+  background: #303030 !important;
+  color: var(--blog-text) !important;
+}
+html.dark .hot-metric {
+  background: #2f2f2f !important;
+  color: var(--blog-text2) !important;
+}
+html.dark .hot-lead-cover {
+  background: linear-gradient(135deg, #2e2e2e, #262626) !important;
+}
+html.dark .hot-section {
+  border-color: var(--blog-border) !important;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+}
+html.dark .hot-section::after {
+  opacity: 0.2 !important;
+}
+html.dark .hot-header {
+  border-bottom-color: var(--blog-border) !important;
+}
+html.dark .hot-item-score {
+  background: #2b2b2b !important;
+}
+html.dark .hot-title-sparkle {
+  color: #c4b5fd !important;
+}
+html.dark .hot-lead-cover-fallback {
+  color: rgba(229, 229, 229, 0.4) !important;
+}
+html.dark .hot-skeleton-lead,
+html.dark .hot-skeleton-item {
+  background: linear-gradient(90deg, #2f2f2f 25%, #383838 37%, #2f2f2f 63%) !important;
 }
 html.dark .timeline {
   border-left-color: var(--blog-border) !important;

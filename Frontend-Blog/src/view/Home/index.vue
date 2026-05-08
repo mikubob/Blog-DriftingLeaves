@@ -3,6 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getArticlePage, searchArticles } from '@/api/article'
 import ArticleCard from '@/components/ArticleCard.vue'
+import HotArticleSection from '@/components/HotArticleSection.vue'
 import SidebarCard from '@/components/SidebarCard.vue'
 
 const route = useRoute()
@@ -67,6 +68,8 @@ onMounted(() => {
           <span class="search-count">{{ total }} 篇结果</span>
           <a class="clear-search" @click="router.push('/')">&times; 清除</a>
         </div>
+
+        <HotArticleSection v-if="!searchKeyword" />
 
         <div v-if="loading" class="loading-placeholder">
           <div v-for="i in 4" :key="i" class="skeleton-card">

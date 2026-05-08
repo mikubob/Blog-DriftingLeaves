@@ -20,3 +20,19 @@ export const getArticleArchive = () => request.get('/blog/article/archive')
 /** 文章搜索 */
 export const searchArticles = (keyword, page = 1, pageSize = 10) =>
   request.get('/blog/article/search', { params: { keyword, page, pageSize } })
+
+/** 获取站点热门文章（按浏览量） */
+export const getSiteHotArticlesByView = () =>
+  request.get('/blog/article/hot/site/view')
+
+/** 获取站点热门文章（按点赞量） */
+export const getSiteHotArticlesByLike = () =>
+  request.get('/blog/article/hot/site/like')
+
+/** 获取本月热门文章（按浏览量） */
+export const getMonthHotArticlesByView = () =>
+  request.get('/blog/article/hot/month/view')
+
+/** 获取本月热门文章（按点赞量） */
+export const getMonthHotArticlesByLike = () =>
+  request.get('/blog/article/hot/month/like')
