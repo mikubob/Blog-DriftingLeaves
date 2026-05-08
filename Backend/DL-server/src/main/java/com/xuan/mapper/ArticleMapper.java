@@ -8,9 +8,11 @@ import com.xuan.vo.ArticleArchiveItemVO;
 import com.xuan.vo.ArticleVO;
 import com.xuan.vo.BlogArticleDetailVO;
 import com.xuan.vo.BlogArticleVO;
+import com.xuan.vo.HotArticleVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Mapper
@@ -99,4 +101,34 @@ public interface ArticleMapper extends BaseMapper<Articles> {
      * @return 文章浏览量 top10 列表
      */
     List<ArticleTitleViewCountDTO> getViewTop10();
+
+    /**
+     * 获取本月热门文章点赞榜（前 5 篇）
+     * @param begin 本月开始时间
+     * @param end 下月开始时间
+     * @return 本月点赞数最高的已发布文章列表
+     */
+    List<HotArticleVO> getMonthHotArticlesByLike(@Param("begin") LocalDateTime begin,
+                                                 @Param("end") LocalDateTime end);
+
+    /**
+     * 获取本月热门文章浏览榜（前 5 篇）
+     * @param begin 本月开始时间
+     * @param end 下月开始时间
+     * @return 本月浏览量最高的已发布文章列表
+     */
+    List<HotArticleVO> getMonthHotArticlesByView(@Param("begin") LocalDateTime begin,
+                                                 @Param("end") LocalDateTime end);
+
+    /**
+     * 获取全站热门文章点赞榜（前 5 篇）
+     * @return 全站总点赞数最高的已发布文章列表
+     */
+    List<HotArticleVO> getSiteHotArticlesByLike();
+
+    /**
+     * 获取全站热门文章浏览榜（前 5 篇）
+     * @return 全站总浏览量最高的已发布文章列表
+     */
+    List<HotArticleVO> getSiteHotArticlesByView();
 }
