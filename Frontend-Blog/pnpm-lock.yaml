@@ -17,6 +17,9 @@ importers:
       element-plus:
         specifier: ^2.11.5
         version: 2.11.5(vue@3.5.22)
+      lunar-javascript:
+        specifier: ^1.7.7
+        version: 1.7.7
       md-editor-v3:
         specifier: ^6.3.1
         version: 6.3.1(vue@3.5.22)
@@ -1649,6 +1652,9 @@ packages:
     resolution: {integrity: sha512-Az5kpNm/koKAwSNIKjsZ4uHV2tVfmlQlcHwFBygQ8gc5/jFg7An9OrxgDy/aE5m+HLx7VfLYqDxLr8gWecZbQA==}
     peerDependencies:
       vue: '>=3.0.1'
+
+  lunar-javascript@1.7.7:
+    resolution: {integrity: sha512-u/KYiwPIBo/0bT+WWfU7qO1d+aqeB90Tuy4ErXenr2Gam0QcWeezUvtiOIyXR7HbVnW2I1DKfU0NBvzMZhbVQw==}
 
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
@@ -3946,6 +3952,8 @@ snapshots:
   lucide-vue-next@0.543.0(vue@3.5.22):
     dependencies:
       vue: 3.5.22
+
+  lunar-javascript@1.7.7: {}
 
   magic-string@0.30.21:
     dependencies:

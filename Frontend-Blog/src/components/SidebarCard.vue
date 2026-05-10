@@ -1,12 +1,14 @@
-<script setup>
+﻿<script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useBlogStore, useVisitorStore } from '@/stores'
 import { addSubscription, checkSubscription, unsubscribe } from '@/api/rss'
+import { useSiteRuntime } from '@/composables/useSiteRuntime'
 
 const router = useRouter()
 const blogStore = useBlogStore()
 const visitorStore = useVisitorStore()
+const { runDays, fetchRunDays } = useSiteRuntime()
 
 /* 分类/标签弹窗 */
 const showCatModal = ref(false)
@@ -88,7 +90,7 @@ let heartCheck = null
 
 // 初始化心跳对象
 heartCheck = {
-  timeout: 30 * 1000, // 30秒发一次心跳
+  timeout: 30 * 1000,
   timer: null,
   start: function () {
     this.stop()
@@ -136,8 +138,10 @@ const connectWs = () => {
 onMounted(() => {
   connectWs()
   checkRssStatus()
+  fetchRunDays()
 })
 onUnmounted(() => {
+  heartCheck?.stop()
   ws?.close()
   ws = null
 })
@@ -175,7 +179,7 @@ const goTag = (slug) => {
         {{ info.location }}
       </p>
 
-      <!-- 数据统计行 -->
+      <!-- 数据统计栏 -->
       <div class="info-stats">
         <div class="info-stat" @click="goArchive">
           <span class="stat-num">{{ report.articleTotalCount ?? 0 }}</span>
@@ -256,10 +260,13 @@ const goTag = (slug) => {
           <span class="sg-label">总访客量</span>
           <span class="sg-val">{{ report.visitorTotalCount ?? 0 }}</span>
         </div>
+        <div class="sg-item">
+          <span class="sg-label">稳定运行</span>
+          <span class="sg-val">{{ runDays ?? '--' }} 天</span>
+        </div>
       </div>
     </div>
 
-    <!-- 默认插槽（文章页可插入目录等） -->
     <slot />
 
     <!-- ===== 分类弹窗 ===== -->
@@ -314,7 +321,7 @@ const goTag = (slug) => {
       width="380px"
       :append-to-body="true"
     >
-      <!-- 已订阅 - 查看状态 -->
+      <!-- 已订阅，查看状态 -->
       <div v-if="isSubscribed && !rssEditMode" class="rss-status">
         <div class="rss-status-row">
           <span class="rss-label">昵称</span>
@@ -526,7 +533,6 @@ const goTag = (slug) => {
   font-family: var(--blog-serif);
 }
 
-/* 弹窗内容 */
 .modal-list {
   max-height: 400px;
   overflow-y: auto;

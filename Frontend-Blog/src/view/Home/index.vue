@@ -1,10 +1,20 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import {
+  ref,
+  defineAsyncComponent,
+  onMounted,
+  onUnmounted,
+  watch
+} from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getArticlePage, searchArticles } from '@/api/article'
 import ArticleCard from '@/components/ArticleCard.vue'
 import HotArticleSection from '@/components/HotArticleSection.vue'
 import SidebarCard from '@/components/SidebarCard.vue'
+
+const HomeTimeWidgets = defineAsyncComponent(
+  () => import('@/components/HomeTimeWidgets.vue')
+)
 
 const route = useRoute()
 const router = useRouter()
@@ -15,6 +25,10 @@ const page = ref(1)
 const pageSize = 10
 const loading = ref(false)
 const searchKeyword = ref('')
+const showTimeWidgets = ref(false)
+
+let widgetMediaQuery = null
+let widgetMediaQueryListener = null
 
 const loadArticles = async () => {
   loading.value = true
@@ -25,9 +39,9 @@ const loadArticles = async () => {
     } else {
       res = await getArticlePage(page.value, pageSize)
     }
-    const d = res.data.data
-    articles.value = d.records ?? []
-    total.value = d.total ?? 0
+    const data = res.data.data
+    articles.value = data.records ?? []
+    total.value = data.total ?? 0
   } catch {
     articles.value = []
   } finally {
@@ -35,16 +49,16 @@ const loadArticles = async () => {
   }
 }
 
-const handlePageChange = (p) => {
-  page.value = p
+const handlePageChange = (currentPage) => {
+  page.value = currentPage
   loadArticles()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 watch(
   () => route.query.search,
-  (kw) => {
-    searchKeyword.value = kw || ''
+  (keyword) => {
+    searchKeyword.value = keyword || ''
     page.value = 1
     loadArticles()
   }
@@ -53,18 +67,32 @@ watch(
 onMounted(() => {
   searchKeyword.value = route.query.search || ''
   loadArticles()
+
+  widgetMediaQuery = window.matchMedia('(min-width: 1281px)')
+  showTimeWidgets.value = widgetMediaQuery.matches
+  widgetMediaQueryListener = (event) => {
+    showTimeWidgets.value = event.matches
+  }
+  widgetMediaQuery.addEventListener('change', widgetMediaQueryListener)
+})
+
+onUnmounted(() => {
+  if (widgetMediaQuery && widgetMediaQueryListener) {
+    widgetMediaQuery.removeEventListener('change', widgetMediaQueryListener)
+  }
 })
 </script>
 
 <template>
   <div class="home-page">
     <div class="home-content">
-      <!-- 左侧: 文章列表 -->
+      <div class="left-widget-col">
+        <HomeTimeWidgets v-if="showTimeWidgets" />
+      </div>
+
       <div class="article-col">
         <div v-if="searchKeyword" class="search-result-tip">
-          <span
-            >搜索: <strong>{{ searchKeyword }}</strong></span
-          >
+          <span>搜索: <strong>{{ searchKeyword }}</strong></span>
           <span class="search-count">{{ total }} 篇结果</span>
           <a class="clear-search" @click="router.push('/')">&times; 清除</a>
         </div>
@@ -83,7 +111,7 @@ onMounted(() => {
         </div>
 
         <template v-else-if="articles.length">
-          <ArticleCard v-for="a in articles" :key="a.id" :article="a" />
+          <ArticleCard v-for="article in articles" :key="article.id" :article="article" />
           <div v-if="total > pageSize" class="pagination-wrap">
             <el-pagination
               :current-page="page"
@@ -99,7 +127,6 @@ onMounted(() => {
         <div v-else class="empty-tip">暂无文章</div>
       </div>
 
-      <!-- 右侧: 侧边栏 -->
       <SidebarCard />
     </div>
   </div>
@@ -109,17 +136,25 @@ onMounted(() => {
 .home-page {
   width: 100%;
 }
+
 .home-content {
+  position: relative;
   display: flex;
   gap: 24px;
   align-items: flex-start;
 }
+
+.left-widget-col {
+  position: absolute;
+  top: 0;
+  left: -264px;
+}
+
 .article-col {
   flex: 1;
   min-width: 0;
 }
 
-/* 搜索提示 */
 .search-result-tip {
   padding: 12px 16px;
   font-size: 14px;
@@ -132,10 +167,12 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
 }
+
 .search-count {
   color: #909399;
   font-size: 13px;
 }
+
 .clear-search {
   color: #303133;
   cursor: pointer;
@@ -143,7 +180,6 @@ onMounted(() => {
   margin-left: auto;
 }
 
-/* 骨架屏 */
 .skeleton-card {
   display: flex;
   gap: 16px;
@@ -153,6 +189,7 @@ onMounted(() => {
   margin-bottom: 16px;
   border: 1px solid #ebeef5;
 }
+
 .skeleton-cover {
   width: 200px;
   height: 130px;
@@ -160,31 +197,36 @@ onMounted(() => {
   border-radius: 6px;
   flex-shrink: 0;
 }
+
 .skeleton-body {
   flex: 1;
 }
+
 .skeleton-line {
   height: 14px;
   background: #ebeef5;
   border-radius: 4px;
   margin-bottom: 10px;
 }
+
 .w60 {
   width: 60%;
 }
+
 .w90 {
   width: 90%;
 }
+
 .w40 {
   width: 40%;
 }
 
-/* 分页 */
 .pagination-wrap {
   margin-top: 20px;
   display: flex;
   justify-content: center;
 }
+
 .empty-tip {
   padding: 60px 0;
   text-align: center;
@@ -195,19 +237,28 @@ onMounted(() => {
   border: 1px solid #ebeef5;
 }
 
+@media (max-width: 1280px) {
+  .left-widget-col {
+    display: none;
+  }
+}
+
 @media (max-width: 960px) {
   .home-content {
     flex-direction: column;
   }
 }
+
 @media (max-width: 600px) {
   .search-result-tip {
     font-size: 13px;
     padding: 10px 12px;
   }
+
   .skeleton-card {
     flex-direction: column;
   }
+
   .skeleton-cover {
     width: 100%;
     height: 160px;

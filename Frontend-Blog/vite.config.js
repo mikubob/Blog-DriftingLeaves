@@ -8,6 +8,46 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import Icons from 'unplugin-icons/vite'
 import IconsResolver from 'unplugin-icons/resolver'
 
+const getPackageName = (id) => {
+  const normalizedId = id.replaceAll('\\', '/')
+  const parts = normalizedId.split('/node_modules/')
+  const packagePath = parts.at(-1)
+  if (!packagePath) return null
+
+  if (packagePath.startsWith('@')) {
+    const [scope, name] = packagePath.split('/')
+    return `${scope}/${name}`
+  }
+
+  return packagePath.split('/')[0]
+}
+
+const elementPlusPackages = new Set([
+  'element-plus',
+  '@element-plus/icons-vue',
+  '@floating-ui/dom',
+  '@floating-ui/core',
+  '@floating-ui/utils',
+  '@ctrl/tinycolor',
+  'async-validator',
+  'dayjs',
+  'escape-html',
+  'lodash',
+  'lodash-es',
+  'lodash-unified',
+  'memoize-one',
+  'normalize-wheel-es'
+])
+
+const markdownPreviewPackages = new Set([
+  'md-editor-v3',
+  '@vavt/md-editor',
+  'highlight.js',
+  'marked',
+  'medium-zoom',
+  'xss'
+])
+
 // https://vite.dev/config/
 export default defineConfig({
   server: {
@@ -67,20 +107,30 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('element-plus')) {
-              return 'element'
-            }
-            if (
-              id.includes('md-editor-v3') ||
-              id.includes('highlight.js') ||
-              id.includes('marked') ||
-              id.includes('@vavt')
-            ) {
-              return 'md-preview'
-            }
-            return 'vendor'
+          if (!id.includes('node_modules')) return
+
+          const packageName = getPackageName(id)
+          if (!packageName) return
+
+          if (elementPlusPackages.has(packageName)) return 'element'
+          if (markdownPreviewPackages.has(packageName)) return 'md-preview'
+
+          if (packageName === 'vue' || packageName.startsWith('@vue/')) {
+            return 'vue-core'
           }
+
+          if (
+            packageName === 'vue-router' ||
+            packageName === 'pinia' ||
+            packageName === 'pinia-plugin-persistedstate'
+          ) {
+            return 'app-core'
+          }
+
+          if (packageName === 'axios') return 'http'
+          if (packageName === 'lunar-javascript') return 'lunar'
+
+          return 'vendor'
         },
         chunkFileNames: 'js/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]'
