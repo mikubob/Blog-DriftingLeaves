@@ -223,6 +223,11 @@ onMounted(loadHotArticles)
   border-bottom: 1px solid rgba(48, 49, 51, 0.1);
 }
 
+.hot-heading {
+  min-width: 0;
+  flex: 1;
+}
+
 .hot-kicker {
   margin: 0 0 4px;
   font-size: 11px;
@@ -274,6 +279,7 @@ onMounted(loadHotArticles)
 .hot-title-note {
   font-size: 12px;
   color: var(--blog-text3);
+  white-space: nowrap;
 }
 
 .hot-switch {
@@ -288,8 +294,10 @@ onMounted(loadHotArticles)
 .hot-controls {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .hot-switch-scope .hot-switch-btn {
@@ -526,6 +534,20 @@ onMounted(loadHotArticles)
 }
 
 @media (max-width: 960px) {
+  .hot-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .hot-title-note {
+    white-space: normal;
+  }
+
+  .hot-controls {
+    justify-content: flex-start;
+  }
+
   .hot-list,
   .hot-skeleton-list {
     grid-template-columns: 1fr;
@@ -534,6 +556,41 @@ onMounted(loadHotArticles)
   .hot-lead-intro {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 1180px) and (min-width: 721px) {
+  .hot-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 14px;
+  }
+
+  .hot-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .hot-title-row {
+    row-gap: 6px;
+  }
+
+  .hot-title-note {
+    width: 100%;
+    white-space: normal;
+  }
+
+  .hot-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, max-content));
+    justify-content: start;
+    gap: 10px 12px;
+  }
+
+  .hot-switch {
+    width: 100%;
   }
 }
 

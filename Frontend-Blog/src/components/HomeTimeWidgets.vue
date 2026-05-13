@@ -391,7 +391,8 @@ onUnmounted(() => {
 
 <style scoped>
 .home-time-widgets {
-  width: 240px;
+  width: 100%;
+  max-width: 240px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -848,6 +849,18 @@ onUnmounted(() => {
     inset 0 0 0 1px rgba(255, 255, 255, 0.1),
     0 4px 10px var(--countdown-fill-shadow);
   transition: width 0.4s ease;
+}
+
+@media (max-width: 1440px) {
+  .home-time-widgets {
+    max-width: 224px;
+  }
+}
+
+@media (max-width: 1220px) {
+  .home-time-widgets {
+    max-width: none;
+  }
 }
 
 :global(html.dark .clock-card) {

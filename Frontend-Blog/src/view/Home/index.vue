@@ -1,9 +1,9 @@
 <script setup>
 import {
-  ref,
   defineAsyncComponent,
   onMounted,
   onUnmounted,
+  ref,
   watch
 } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -68,7 +68,7 @@ onMounted(() => {
   searchKeyword.value = route.query.search || ''
   loadArticles()
 
-  widgetMediaQuery = window.matchMedia('(min-width: 1281px)')
+  widgetMediaQuery = window.matchMedia('(min-width: 1221px)')
   showTimeWidgets.value = widgetMediaQuery.matches
   widgetMediaQueryListener = (event) => {
     showTimeWidgets.value = event.matches
@@ -86,8 +86,8 @@ onUnmounted(() => {
 <template>
   <div class="home-page">
     <div class="home-content">
-      <div class="left-widget-col">
-        <HomeTimeWidgets v-if="showTimeWidgets" />
+      <div v-if="showTimeWidgets" class="left-widget-col">
+        <HomeTimeWidgets />
       </div>
 
       <div class="article-col">
@@ -138,20 +138,17 @@ onUnmounted(() => {
 }
 
 .home-content {
-  position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(220px, 240px) minmax(0, 1fr) minmax(248px, 280px);
   gap: 24px;
   align-items: flex-start;
 }
 
 .left-widget-col {
-  position: absolute;
-  top: 0;
-  left: -264px;
+  min-width: 0;
 }
 
 .article-col {
-  flex: 1;
   min-width: 0;
 }
 
@@ -237,15 +234,42 @@ onUnmounted(() => {
   border: 1px solid #ebeef5;
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1440px) {
+  .home-content {
+    grid-template-columns: minmax(208px, 224px) minmax(0, 1fr) minmax(236px, 264px);
+    gap: 20px;
+  }
+}
+
+@media (max-width: 1220px) {
+  .home-content {
+    grid-template-columns: minmax(0, 1fr) minmax(236px, 280px);
+    grid-template-areas:
+      'main right'
+      'left right';
+    align-items: start;
+  }
+
+  .article-col {
+    grid-area: main;
+  }
+
   .left-widget-col {
-    display: none;
+    grid-area: left;
+  }
+
+  :deep(.sidebar) {
+    grid-area: right;
   }
 }
 
 @media (max-width: 960px) {
   .home-content {
-    flex-direction: column;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'main'
+      'left'
+      'right';
   }
 }
 

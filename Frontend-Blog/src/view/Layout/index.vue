@@ -104,9 +104,9 @@ onUnmounted(() => {
   background: var(--blog-bg);
 }
 .main-inner {
-  max-width: 1200px;
+  max-width: 1360px;
   margin: 0 auto;
-  padding: 32px 28px;
+  padding: 32px clamp(16px, 2.4vw, 32px);
 }
 
 /* 页面切换过渡动画 */

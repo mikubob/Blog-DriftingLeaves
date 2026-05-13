@@ -378,7 +378,8 @@ const goTag = (slug) => {
 
 <style scoped>
 .sidebar {
-  width: 280px;
+  width: 100%;
+  max-width: 280px;
   flex-shrink: 0;
   position: sticky;
   top: 74px;
@@ -606,9 +607,16 @@ const goTag = (slug) => {
   margin-left: 2px;
 }
 
+@media (max-width: 1220px) {
+  .sidebar {
+    max-width: none;
+  }
+}
+
 @media (max-width: 960px) {
   .sidebar {
     width: 100%;
+    max-width: none;
     position: static;
   }
 }
