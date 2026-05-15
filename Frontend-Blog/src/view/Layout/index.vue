@@ -104,7 +104,7 @@ onUnmounted(() => {
   background: var(--blog-bg);
 }
 .main-inner {
-  max-width: 1360px;
+  max-width: 1500px;
   margin: 0 auto;
   padding: 32px clamp(16px, 2.4vw, 32px);
 }

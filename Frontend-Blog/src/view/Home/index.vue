@@ -140,7 +140,7 @@ onUnmounted(() => {
 .home-content {
   display: grid;
   grid-template-columns: minmax(220px, 240px) minmax(0, 1fr) minmax(248px, 280px);
-  gap: 24px;
+  gap: 28px;
   align-items: flex-start;
 }
 
@@ -237,7 +237,7 @@ onUnmounted(() => {
 @media (max-width: 1440px) {
   .home-content {
     grid-template-columns: minmax(208px, 224px) minmax(0, 1fr) minmax(236px, 264px);
-    gap: 20px;
+    gap: 22px;
   }
 }
 
