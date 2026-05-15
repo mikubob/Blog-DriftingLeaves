@@ -333,9 +333,21 @@ onMounted(() => {
   font-weight: 600;
 }
 
+@media (max-width: 1220px) {
+  .about-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(236px, 280px);
+    align-items: start;
+  }
+}
+
 @media (max-width: 960px) {
   .about-layout {
     flex-direction: column;
+    display: flex;
+  }
+  .about-inner {
+    width: 100%;
   }
 }
 @media (max-width: 600px) {

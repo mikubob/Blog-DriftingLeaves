@@ -1,5 +1,5 @@
 ﻿<script setup>
-import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useBlogStore, useThemeStore } from '@/stores'
 
@@ -21,13 +21,22 @@ const handleScroll = () => {
 onMounted(() =>
   window.addEventListener('scroll', handleScroll, { passive: true })
 )
-onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 
 /* 搜索 */
 const searchVisible = ref(false)
 const keyword = ref('')
 const searchInputRef = ref(null)
 const mobileNavVisible = ref(false)
+const compactNav = ref(false)
+const headerInnerRef = ref(null)
+const headerLeftRef = ref(null)
+const headerRightRef = ref(null)
+const siteTitleRef = ref(null)
+const navDesktopRef = ref(null)
+const searchBoxRef = ref(null)
+const miniPlayerWrapRef = ref(null)
+const themeSwitchRef = ref(null)
+const searchAreaRef = ref(null)
 
 /* 音乐播放 */
 const isPlaying = ref(false)
@@ -36,6 +45,72 @@ const musicIndex = ref(0)
 const musicListVisible = ref(false)
 
 const currentTrack = computed(() => blogStore.musics[musicIndex.value] || null)
+const DESKTOP_SEARCH_EXPANDED_WIDTH = 180
+const HEADER_LAYOUT_BUFFER = 12
+let headerResizeObserver = null
+
+const syncHeaderLayout = () => {
+  nextTick(() => {
+    const headerInnerEl = headerInnerRef.value
+    const headerLeftEl = headerLeftRef.value
+    const siteTitleEl = siteTitleRef.value?.$el ?? siteTitleRef.value
+    const navDesktopEl = navDesktopRef.value
+    const searchBoxEl = searchBoxRef.value
+    const miniPlayerWrapEl = miniPlayerWrapRef.value
+    const themeSwitchEl = themeSwitchRef.value
+    const searchAreaEl = searchAreaRef.value
+
+    if (
+      !headerInnerEl ||
+      !headerLeftEl ||
+      !navDesktopEl
+    ) {
+      return
+    }
+
+    if (!siteTitleEl) return
+
+    const leftGap = parseFloat(getComputedStyle(headerLeftEl).gap || '0')
+    const rightGap = parseFloat(
+      getComputedStyle(headerRightRef.value).gap || '0'
+    )
+    const titleWidth = siteTitleEl.getBoundingClientRect().width
+    const navWidth = navDesktopEl.scrollWidth
+    const leftWidth = titleWidth + leftGap + navWidth
+    const currentSearchWidth = searchBoxEl?.getBoundingClientRect().width ?? 0
+    const expandedSearchDelta = Math.max(
+      0,
+      DESKTOP_SEARCH_EXPANDED_WIDTH - currentSearchWidth
+    )
+    const rightItems = []
+
+    if (currentTrack.value && miniPlayerWrapEl) {
+      rightItems.push(miniPlayerWrapEl.getBoundingClientRect().width)
+    }
+
+    if (themeSwitchEl) {
+      rightItems.push(themeSwitchEl.getBoundingClientRect().width)
+    }
+
+    if (searchAreaEl) {
+      rightItems.push(
+        searchAreaEl.getBoundingClientRect().width + expandedSearchDelta
+      )
+    }
+
+    const rightWidth =
+      rightItems.reduce((sum, width) => sum + width, 0) +
+      Math.max(0, rightItems.length - 1) * rightGap
+    const requiredWidth = leftWidth + rightWidth + HEADER_LAYOUT_BUFFER
+    const shouldCompact = requiredWidth > headerInnerEl.clientWidth
+
+    compactNav.value = shouldCompact
+
+    if (!shouldCompact) {
+      mobileNavVisible.value = false
+    }
+  })
+}
 
 const togglePlay = () => {
   if (!audioRef.value || !currentTrack.value) return
@@ -122,14 +197,51 @@ const navTo = (item) => {
     router.push(item.to)
   }
 }
+
+watch(
+  () => blogStore.musics.length,
+  () => syncHeaderLayout()
+)
+
+watch(currentTrack, () => syncHeaderLayout())
+
+const handleWindowResize = () => {
+  syncHeaderLayout()
+}
+
+onMounted(() => {
+  window.addEventListener('resize', handleWindowResize, { passive: true })
+  syncHeaderLayout()
+
+  if (typeof ResizeObserver !== 'undefined') {
+    headerResizeObserver = new ResizeObserver(() => {
+      syncHeaderLayout()
+    })
+    headerInnerRef.value && headerResizeObserver.observe(headerInnerRef.value)
+    headerLeftRef.value && headerResizeObserver.observe(headerLeftRef.value)
+    headerRightRef.value && headerResizeObserver.observe(headerRightRef.value)
+  }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+  window.removeEventListener('resize', handleWindowResize)
+  headerResizeObserver?.disconnect()
+  headerResizeObserver = null
+})
 </script>
 
 <template>
-  <header class="site-header" :class="{ scrolled, dark: isDark }">
-    <div class="header-inner">
-      <div class="header-left">
-        <router-link to="/" class="site-title">DriftingLeaves Blog</router-link>
-        <nav class="nav-desktop">
+  <header
+    class="site-header"
+    :class="{ scrolled, dark: isDark, compact: compactNav }"
+  >
+    <div ref="headerInnerRef" class="header-inner">
+      <div ref="headerLeftRef" class="header-left">
+        <router-link ref="siteTitleRef" to="/" class="site-title"
+          >DriftingLeaves Blog</router-link
+        >
+        <nav ref="navDesktopRef" class="nav-desktop">
           <template v-for="item in navItems" :key="item.label">
             <a
               v-if="item.external"
@@ -147,8 +259,12 @@ const navTo = (item) => {
         </nav>
       </div>
 
-      <div class="header-right">
-        <div v-if="currentTrack" class="mini-player-wrap">
+      <div ref="headerRightRef" class="header-right">
+        <div
+          v-if="currentTrack"
+          ref="miniPlayerWrapRef"
+          class="mini-player-wrap"
+        >
           <div class="mini-player" @click="toggleMusicList">
             <img
               v-if="currentTrack.coverImage"
@@ -209,6 +325,7 @@ const navTo = (item) => {
         </div>
         <!-- 明暗模式切换 -->
         <label
+          ref="themeSwitchRef"
           class="theme-switch"
           :title="isDark ? '切换到浅色模式' : '切换到暗色模式'"
         >
@@ -243,8 +360,12 @@ const navTo = (item) => {
           </div>
         </label>
 
-        <div class="search-area">
-          <div class="search-box" :class="{ expanded: searchVisible }">
+        <div ref="searchAreaRef" class="search-area">
+          <div
+            ref="searchBoxRef"
+            class="search-box"
+            :class="{ expanded: searchVisible }"
+          >
             <input
               ref="searchInputRef"
               v-show="searchVisible"
@@ -1004,29 +1125,36 @@ const navTo = (item) => {
   color: #e5e5e5;
 }
 
-@media (max-width: 768px) {
-  .nav-desktop {
-    display: none;
-  }
-  .mini-player-wrap {
-    display: none;
-  }
-  .theme-switch {
-    display: none;
-  }
-  .search-box.expanded {
-    width: 120px;
-  }
-  .mobile-menu-btn {
-    display: block;
-  }
-  .nav-mobile {
-    display: flex;
-    flex-direction: column;
-  }
-  .header-inner {
-    padding: 0 16px;
-  }
+.site-header.compact .nav-desktop {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  opacity: 0;
+}
+.site-header.compact .mini-player-wrap {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  opacity: 0;
+}
+.site-header.compact .theme-switch {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  opacity: 0;
+}
+.site-header.compact .search-box.expanded {
+  width: 120px;
+}
+.site-header.compact .mobile-menu-btn {
+  display: block;
+}
+.site-header.compact .nav-mobile {
+  display: flex;
+  flex-direction: column;
+}
+.site-header.compact .header-inner {
+  padding: 0 16px;
 }
 </style>
 

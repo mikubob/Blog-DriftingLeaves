@@ -954,9 +954,21 @@ onMounted(() => {
   font-size: 14px;
 }
 
+@media (max-width: 1220px) {
+  .message-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(236px, 280px);
+    align-items: start;
+  }
+}
+
 @media (max-width: 960px) {
   .message-layout {
     flex-direction: column;
+    display: flex;
+  }
+  .message-inner {
+    width: 100%;
   }
 }
 @media (max-width: 600px) {

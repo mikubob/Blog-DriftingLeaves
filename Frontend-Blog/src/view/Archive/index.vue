@@ -231,9 +231,18 @@ onMounted(() => {
   font-size: 14px;
 }
 
+@media (max-width: 1220px) {
+  .archive-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(236px, 280px);
+    align-items: start;
+  }
+}
+
 @media (max-width: 960px) {
   .archive-layout {
     flex-direction: column;
+    display: flex;
   }
   .archive-main {
     width: 100%;

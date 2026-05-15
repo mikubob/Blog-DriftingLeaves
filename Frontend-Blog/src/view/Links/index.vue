@@ -195,9 +195,21 @@ onMounted(() => {
   margin: 0;
 }
 
+@media (max-width: 1220px) {
+  .links-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(236px, 280px);
+    align-items: start;
+  }
+}
+
 @media (max-width: 960px) {
   .links-layout {
     flex-direction: column;
+    display: flex;
+  }
+  .links-main {
+    width: 100%;
   }
 }
 @media (max-width: 600px) {

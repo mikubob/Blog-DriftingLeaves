@@ -176,9 +176,21 @@ onMounted(async () => {
   margin: 0;
 }
 
+@media (max-width: 1220px) {
+  .tag-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(236px, 280px);
+    align-items: start;
+  }
+}
+
 @media (max-width: 960px) {
   .tag-layout {
     flex-direction: column;
+    display: flex;
+  }
+  .tag-main {
+    width: 100%;
   }
 }
 @media (max-width: 600px) {
