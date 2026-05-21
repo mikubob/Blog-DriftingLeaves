@@ -83,16 +83,16 @@
    ```sql
    CREATE DATABASE driftingleaves CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
    USE driftingleaves;
-   -- 执行 DL-server/src/main/resources/sql/sql.sql
+   -- 执行 DL-server/src/main/resources/sql/DriftingLeaves.sql
    ```
 
 3. 配置应用
-   ```bash
-   cd DL-server/src/main/resources
-   cp application.yml.template application.yml
-   cp application-dev.yml.template application-dev.yml
-   # 编辑配置文件，填入必要配置
-   ```
+
+   编辑 `DL-server/src/main/resources/` 下的配置文件：
+   - `application.yml` - 主配置
+   - `application-dev.yml` - 开发环境配置（数据库、Redis 等）
+   - `application-test.yml` - 测试环境配置（Docker 环境）
+   - `application-prod.yml` - 生产环境配置
 
 4. 使用 IDE 打开项目
    - 使用 IntelliJ IDEA 打开 `Backend` 目录
@@ -157,6 +157,7 @@ Backend/
     ├── interceptor/     # 拦截器
     ├── mapper/          # MyBatis Mapper
     ├── service/         # 服务层
+    │   └── impl/monitor/ # 服务器监控实现
     ├── task/            # 定时任务
     └── websocket/       # WebSocket
 ```
@@ -310,12 +311,15 @@ public Result<Void> add(@RequestBody ArticleDTO articleDTO) {
 限流注解：
 ```java
 @PostMapping("/login")
-@RateLimit(type = RateLimit.Type.IP, tokens = 5, burstCapacity = 8, 
-           timeWindow = 60, message = "操作过于频繁，请稍后再试")
+@RateLimit(type = RateLimit.Type.IP, tokens = 5, burstCapacity = 8,
+           timeWindow = 60, timeUnit = TimeUnit.SECONDS,
+           message = "操作过于频繁，请稍后再试")
 public Result<AdminLoginVO> login(@RequestBody AdminLoginDTO dto) {
     // ...
 }
 ```
+
+限流类型：`IP`、`USER`、`GLOBAL`、`ENDPOINT`
 
 ### 前端代码规范
 

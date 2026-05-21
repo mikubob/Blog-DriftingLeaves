@@ -51,12 +51,16 @@ DriftingLeaves is a fully-featured personal blog system consisting of four sub-s
 | **Markdown Rendering** | Using md-editor-v3, consistent with admin editing experience |
 | **Categories/Tags** | Multi-dimensional article categorization and tag management |
 | **Article Archive** | Timeline display of all articles |
-| **Full-text Search** | MySQL full-text index based article search |
+| **Full-text Search** | MySQL full-text index + LIKE fallback search |
 | **Comment System** | Nested replies, Markdown support, whisper mode, email notifications |
 | **Guestbook** | Independent message system separate from articles |
 | **Friend Links** | Display friendly links |
 | **Article Likes** | Visitors can like without login |
+| **Hot Articles** | Monthly and all-time hot article rankings |
+| **Related Articles** | Automatic related article recommendations from same category |
+| **Prev/Next Navigation** | Article previous/next navigation |
 | **RSS Subscription** | XML Feed + email push for new articles |
+| **Sitemap** | Dynamic XML sitemap generation with Redis caching |
 | **Auto TOC** | Automatic article table of contents extraction |
 | **Dark Mode** | Follow system / manual toggle |
 | **Responsive Design** | Perfect mobile adaptation |
@@ -73,6 +77,7 @@ DriftingLeaves is a fully-featured personal blog system consisting of four sub-s
 | **Profile Management** | Nickname, avatar, bio, etc. |
 | **Social Media Management** | GitHub, email, and other links |
 | **Visitor Statistics** | ECharts data visualization dashboard |
+| **Server Monitor** | Real-time CPU, memory, disk, network monitoring with OSHI |
 | **System Configuration** | Site settings, ICP info, etc. |
 | **Operation Logs** | Record all admin operations |
 
@@ -119,6 +124,8 @@ DriftingLeaves is a fully-featured personal blog system consisting of four sub-s
 | ip2region | - | IP address parsing (offline database) |
 | Thumbnailator | - | Image compression processing |
 | WebP ImageIO | - | WebP format support |
+| OSHI | 7.x | System info collection (CPU, memory, disk, etc.) |
+| Bucket4j | 8.x | Token bucket rate limiting |
 | Lombok | - | Simplify Java code |
 | Jakarta Validation | - | Parameter validation |
 
@@ -136,6 +143,7 @@ DriftingLeaves is a fully-featured personal blog system consisting of four sub-s
 | Axios | 1.x | HTTP client |
 | ECharts | 5.x | Data visualization (Admin only) |
 | md-editor-v3 | 6.x | Markdown editor (Admin, Blog) |
+| lunar-javascript | 1.x | Chinese lunar calendar (Blog only) |
 | dayjs | 1.x | Date processing (Admin only) |
 | Sass | 1.x | CSS preprocessor |
 | unplugin-icons | - | Icon auto-import |
@@ -236,6 +244,7 @@ DriftingLeaves-Website/
 │           │   ├── interceptor/     # Interceptors
 │           │   ├── mapper/          # MyBatis Mappers
 │           │   ├── service/         # Service layer
+│           │   │   └── impl/monitor/ # Server monitor implementation
 │           │   ├── task/            # Scheduled tasks
 │           │   └── websocket/       # WebSocket
 │           └── resources/
@@ -285,7 +294,7 @@ DriftingLeaves-Website/
    ```
 
 3. **Execute database scripts**
-   Execute SQL statements in `Backend/DL-server/src/main/resources/sql/sql.sql`
+   Execute SQL statements in `Backend/DL-server/src/main/resources/sql/DriftingLeaves.sql`
 
 4. **Generate admin password**
    The project uses salted encryption for password storage. Run the test class to generate an encrypted password:
@@ -298,11 +307,12 @@ DriftingLeaves-Website/
    ```
 
 5. **Configure application**
-   ```bash
-   cd Backend/DL-server/src/main/resources
-   cp application.yml.template application.yml
-   cp application-dev.yml.template application-dev.yml
-   ```
+
+   Edit the configuration files in `Backend/DL-server/src/main/resources/`:
+   - `application.yml` - Main configuration
+   - `application-dev.yml` - Development profile (database, Redis, etc.)
+   - `application-test.yml` - Test profile (Docker environment)
+   - `application-prod.yml` - Production profile
 
 6. **Start backend**
    ```bash
@@ -422,11 +432,18 @@ GET /blog/article/list?page=1&size=10
 # Get article detail
 GET /blog/article/{slug}
 
+# Get hot articles
+GET /blog/article/hot/monthly
+GET /blog/article/hot/all
+
 # Get RSS feed
 GET /blog/rss
 
 # Get Sitemap
 GET /blog/sitemap.xml
+
+# Server monitor (admin)
+GET /admin/server-monitor/overview
 
 # Admin login
 POST /admin/admin/login
@@ -440,32 +457,39 @@ Content-Type: application/json
 
 ## Security Features
 
-- **Authentication**: JWT Token authentication mechanism
+- **Authentication**: JWT Token authentication mechanism with guest read-only enforcement
 - **Password Encryption**: Salted hash encryption storage
-- **Rate Limiting**: Token bucket algorithm based API rate limiting
-- **XSS Protection**: Markdown content XSS filtering
+- **Rate Limiting**: Bucket4j token bucket algorithm based API rate limiting
+- **XSS Protection**: Markdown content XSS filtering via Jsoup
 - **CORS Configuration**: Cross-origin request security configuration
 - **SQL Injection Protection**: MyBatis-Plus parameterized queries
+- **Security Scan Filter**: Intercepts common vulnerability scanning requests (.env, wp-admin, phpmyadmin, .git, etc.) and returns 404
+- **No-Cache Headers**: API responses set `Cache-Control: no-store` to prevent caching of sensitive data
 
 ### Rate Limiting Annotation Usage
 
 ```java
 @PostMapping("/login")
-@RateLimit(type = RateLimit.Type.IP, tokens = 5, burstCapacity = 8, 
-           timeWindow = 60, message = "Too many requests, please try again later")
+@RateLimit(type = RateLimit.Type.IP, tokens = 5, burstCapacity = 8,
+           timeWindow = 60, timeUnit = TimeUnit.SECONDS,
+           message = "Too many requests, please try again later")
 public Result<AdminLoginVO> login(@RequestBody AdminLoginDTO dto) {
     // ...
 }
 ```
 
+Rate limit types: `IP`, `USER`, `GLOBAL`, `ENDPOINT`
+
 ## Performance Optimization
 
 ### Backend Optimization
-- **Virtual Threads**: Enable Java 21 virtual threads for improved I/O-intensive operations
-- **Async Processing**: Email sending, logging, etc. executed asynchronously
+- **Virtual Threads**: Enable Java 21 virtual threads for Tomcat, async tasks, mail, and connection pool
+- **Async Processing**: Email sending, visitor recording, logging, etc. executed asynchronously
 - **Redis Caching**: Hot data caching to reduce database pressure
+- **Redis-first Counters**: View/like counts stored in Redis hashes, synced to MySQL every 5 minutes via distributed-locked scheduled tasks
 - **Connection Pool**: Druid connection pool for database connection optimization
-- **Scheduled Sync**: Like counts, view counts synced to database periodically
+- **Scheduled Tasks**: View count sync, like count sync, and server monitor data collection
+- **API No-Cache**: All API responses set no-cache headers to prevent stale data
 
 ### Frontend Optimization
 - **Code Splitting**: Module-based bundling to reduce initial load time

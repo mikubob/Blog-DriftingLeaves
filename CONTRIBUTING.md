@@ -85,16 +85,16 @@ If you have an idea for a new feature, please submit it via GitHub Issues:
    ```sql
    CREATE DATABASE driftingleaves CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
    USE driftingleaves;
-   -- Execute DL-server/src/main/resources/sql/sql.sql
+   -- Execute DL-server/src/main/resources/sql/DriftingLeaves.sql
    ```
 
 3. Configure application
-   ```bash
-   cd DL-server/src/main/resources
-   cp application.yml.template application.yml
-   cp application-dev.yml.template application-dev.yml
-   # Edit configuration files with necessary settings
-   ```
+
+   Edit the configuration files in `DL-server/src/main/resources/`:
+   - `application.yml` - Main configuration
+   - `application-dev.yml` - Development profile (database, Redis, etc.)
+   - `application-test.yml` - Test profile (Docker environment)
+   - `application-prod.yml` - Production profile
 
 4. Open project in IDE
    - Open `Backend` directory with IntelliJ IDEA
@@ -159,6 +159,7 @@ Backend/
     ├── interceptor/     # Interceptors
     ├── mapper/          # MyBatis Mappers
     ├── service/         # Service layer
+    │   └── impl/monitor/ # Server monitor implementation
     ├── task/            # Scheduled tasks
     └── websocket/       # WebSocket
 ```
@@ -312,12 +313,15 @@ public Result<Void> add(@RequestBody ArticleDTO articleDTO) {
 Rate limiting annotation:
 ```java
 @PostMapping("/login")
-@RateLimit(type = RateLimit.Type.IP, tokens = 5, burstCapacity = 8, 
-           timeWindow = 60, message = "Too many requests, please try again later")
+@RateLimit(type = RateLimit.Type.IP, tokens = 5, burstCapacity = 8,
+           timeWindow = 60, timeUnit = TimeUnit.SECONDS,
+           message = "Too many requests, please try again later")
 public Result<AdminLoginVO> login(@RequestBody AdminLoginDTO dto) {
     // ...
 }
 ```
+
+Rate limit types: `IP`, `USER`, `GLOBAL`, `ENDPOINT`
 
 ### Frontend Code Standards
 

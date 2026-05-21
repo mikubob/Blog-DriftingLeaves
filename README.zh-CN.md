@@ -51,12 +51,16 @@ DriftingLeaves 是一个功能完整的个人博客系统，包含主站、博�
 | **Markdown 渲染** | 使用 md-editor-v3，与管理端编辑效果一致 |
 | **文章分类/标签** | 支持多维度文章分类和标签管理 |
 | **文章归档** | 按时间线展示所有文章 |
-| **全文搜索** | 基于 MySQL 全文索引的文章搜索 |
+| **全文搜索** | MySQL 全文索引 + LIKE 兜底搜索 |
 | **评论系统** | 嵌套回复、Markdown 支持、悄悄话模式、邮件通知 |
 | **留言板** | 独立于文章的留言系统 |
 | **友情链接** | 展示友链信息 |
 | **文章点赞** | 访客无需登录即可点赞 |
+| **热门文章** | 月度和全站热门文章排行 |
+| **相关推荐** | 自动推荐同分类相关文章 |
+| **上下篇导航** | 文章上一篇/下一篇导航 |
 | **RSS 订阅** | XML Feed + 邮件推送新文章 |
+| **Sitemap** | 动态 XML 站点地图生成，Redis 缓存 |
 | **自动目录** | 自动提取文章 TOC 目录 |
 | **暗黑模式** | 跟随系统 / 手动切换 |
 | **响应式设计** | 完美适配移动端 |
@@ -73,6 +77,7 @@ DriftingLeaves 是一个功能完整的个人博客系统，包含主站、博�
 | **个人信息管理** | 昵称、头像、简介等 |
 | **社交媒体管理** | GitHub、邮箱等链接 |
 | **访客统计** | ECharts 数据可视化看板 |
+| **服务器监控** | 基于 OSHI 的实时 CPU、内存、磁盘、网络监控 |
 | **系统配置** | 站点设置、备案信息等 |
 | **操作日志** | 记录所有管理操作 |
 
@@ -119,6 +124,8 @@ DriftingLeaves 是一个功能完整的个人博客系统，包含主站、博�
 | ip2region | - | IP 地址解析（离线库） |
 | Thumbnailator | - | 图片压缩处理 |
 | WebP ImageIO | - | WebP 格式支持 |
+| OSHI | 7.x | 系统信息采集（CPU、内存、磁盘等） |
+| Bucket4j | 8.x | 令牌桶限流 |
 | Lombok | - | 简化 Java 代码 |
 | Jakarta Validation | - | 参数校验 |
 
@@ -136,6 +143,7 @@ DriftingLeaves 是一个功能完整的个人博客系统，包含主站、博�
 | Axios | 1.x | HTTP 客户端 |
 | ECharts | 5.x | 数据可视化（仅 Admin） |
 | md-editor-v3 | 6.x | Markdown 编辑器（Admin、Blog） |
+| lunar-javascript | 1.x | 中国农历（仅 Blog） |
 | dayjs | 1.x | 日期处理（仅 Admin） |
 | Sass | 1.x | CSS 预处理器 |
 | unplugin-icons | - | 图标自动导入 |
@@ -235,6 +243,7 @@ DriftingLeaves-Website/
 │           │   ├── interceptor/     # 拦截器
 │           │   ├── mapper/          # MyBatis Mapper
 │           │   ├── service/         # 服务层
+│           │   │   └── impl/monitor/ # 服务器监控实现
 │           │   ├── task/            # 定时任务
 │           │   └── websocket/       # WebSocket
 │           └── resources/
@@ -284,7 +293,7 @@ DriftingLeaves-Website/
    ```
 
 3. **执行数据库脚本**
-   执行 `Backend/DL-server/src/main/resources/sql/sql.sql` 中的 SQL 语句
+   执行 `Backend/DL-server/src/main/resources/sql/DriftingLeaves.sql` 中的 SQL 语句
 
 4. **生成管理员密码**
    项目使用加盐加密存储密码，需要运行测试类生成加密后的密码：
@@ -297,11 +306,12 @@ DriftingLeaves-Website/
    ```
 
 5. **配置应用**
-   ```bash
-   cd Backend/DL-server/src/main/resources
-   cp application.yml.template application.yml
-   cp application-dev.yml.template application-dev.yml
-   ```
+
+   编辑 `Backend/DL-server/src/main/resources/` 下的配置文件：
+   - `application.yml` - 主配置
+   - `application-dev.yml` - 开发环境配置（数据库、Redis 等）
+   - `application-test.yml` - 测试环境配置（Docker 环境）
+   - `application-prod.yml` - 生产环境配置
 
 6. **启动后端**
    ```bash
@@ -421,11 +431,18 @@ GET /blog/article/list?page=1&size=10
 # 获取文章详情
 GET /blog/article/{slug}
 
+# 获取热门文章
+GET /blog/article/hot/monthly
+GET /blog/article/hot/all
+
 # 获取 RSS 订阅
 GET /blog/rss
 
 # 获取 Sitemap
 GET /blog/sitemap.xml
+
+# 服务器监控（管理端）
+GET /admin/server-monitor/overview
 
 # 管理员登录
 POST /admin/admin/login
@@ -439,32 +456,39 @@ Content-Type: application/json
 
 ## 安全特性
 
-- **身份认证**：JWT Token 认证机制
+- **身份认证**：JWT Token 认证机制，游客角色只读限制
 - **密码加密**：加盐哈希加密存储
-- **限流保护**：基于令牌桶算法的接口限流
-- **XSS 防护**：Markdown 内容 XSS 过滤
+- **限流保护**：基于 Bucket4j 令牌桶算法的接口限流
+- **XSS 防护**：通过 Jsoup 进行 Markdown 内容 XSS 过滤
 - **CORS 配置**：跨域请求安全配置
 - **SQL 注入防护**：MyBatis-Plus 参数化查询
+- **安全扫描过滤**：拦截常见漏洞扫描请求（.env、wp-admin、phpmyadmin、.git 等），返回 404
+- **No-Cache 响应头**：API 响应设置 `Cache-Control: no-store`，防止敏感数据缓存
 
 ### 限流注解使用
 
 ```java
 @PostMapping("/login")
-@RateLimit(type = RateLimit.Type.IP, tokens = 5, burstCapacity = 8, 
-           timeWindow = 60, message = "操作过于频繁，请稍后再试")
+@RateLimit(type = RateLimit.Type.IP, tokens = 5, burstCapacity = 8,
+           timeWindow = 60, timeUnit = TimeUnit.SECONDS,
+           message = "操作过于频繁，请稍后再试")
 public Result<AdminLoginVO> login(@RequestBody AdminLoginDTO dto) {
     // ...
 }
 ```
 
+限流类型：`IP`、`USER`、`GLOBAL`、`ENDPOINT`
+
 ## 性能优化
 
 ### 后端优化
-- **虚拟线程**：启用 Java 21 虚拟线程，提升 I/O 密集型操作性能
-- **异步处理**：邮件发送、日志记录等异步执行
+- **虚拟线程**：为 Tomcat、异步任务、邮件发送和连接池启用 Java 21 虚拟线程
+- **异步处理**：邮件发送、访客记录、日志记录等异步执行
 - **Redis 缓存**：热点数据缓存，减少数据库压力
+- **Redis 优先计数器**：浏览/点赞数存储在 Redis Hash 中，每 5 分钟通过分布式锁定时任务同步到 MySQL
 - **连接池**：Druid 连接池优化数据库连接
-- **定时同步**：点赞数、浏览数定时同步到数据库
+- **定时任务**：浏览数同步、点赞数同步、服务器监控数据采集
+- **API No-Cache**：所有 API 响应设置 no-cache 头，防止数据过期
 
 ### 前端优化
 - **代码分割**：按模块分割打包，减少首屏加载时间
