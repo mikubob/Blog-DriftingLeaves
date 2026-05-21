@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, shallowRef } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, shallowRef, ref } from 'vue'
 import {
   getOverview,
   getViewStatistics,
@@ -269,10 +269,30 @@ const initCharts = () => {
   fetchPieChart()
 }
 
-onMounted(() => {
+const resizeCharts = () => {
+  viewChart.value?.resize()
+  visitorChart.value?.resize()
+  barChart.value?.resize()
+  pieChart.value?.resize()
+}
+
+onMounted(async () => {
   fetchOverview()
   fetchRunDays()
+  await nextTick()
   initCharts()
+  requestAnimationFrame(() => {
+    resizeCharts()
+  })
+  window.addEventListener('resize', resizeCharts)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', resizeCharts)
+  viewChart.value?.dispose()
+  visitorChart.value?.dispose()
+  barChart.value?.dispose()
+  pieChart.value?.dispose()
 })
 </script>
 

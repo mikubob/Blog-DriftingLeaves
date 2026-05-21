@@ -34,6 +34,122 @@ const onHtmlChanged = (html) => {
 const saving = ref(false)
 const uploadingCover = ref(false)
 const editorPanelRef = ref(null)
+const mdEditorRef = ref(null)
+
+let editorRefreshTimer = null
+let resizeObserver = null
+let previewObserver = null
+let suppressResizeRefreshUntil = 0
+let lastEditorPanelRect = null
+const previewImageListeners = new Map()
+
+const cleanupPreviewImageListeners = () => {
+  previewImageListeners.forEach((handler, img) => {
+    img.removeEventListener('load', handler)
+    img.removeEventListener('error', handler)
+  })
+  previewImageListeners.clear()
+}
+
+const cleanupPreviewObserver = () => {
+  previewObserver?.disconnect()
+  previewObserver = null
+  cleanupPreviewImageListeners()
+}
+
+const scheduleEditorRefresh = () => {
+  if (editorRefreshTimer) {
+    window.clearTimeout(editorRefreshTimer)
+  }
+
+  editorRefreshTimer = window.setTimeout(async () => {
+    suppressResizeRefreshUntil = Date.now() + 400
+    mdEditorRef.value?.rerender?.()
+    await nextTick()
+    initPreviewSyncWatchers()
+  }, 120)
+}
+
+const bindPreviewImageListeners = () => {
+  const preview = editorPanelRef.value?.querySelector('.md-editor-preview')
+  if (!preview) return
+
+  const images = new Set(preview.querySelectorAll('img'))
+
+  previewImageListeners.forEach((handler, img) => {
+    if (images.has(img)) return
+    img.removeEventListener('load', handler)
+    img.removeEventListener('error', handler)
+    previewImageListeners.delete(img)
+  })
+
+  images.forEach((img) => {
+    if (previewImageListeners.has(img) || img.complete) return
+
+    const handler = () => {
+      img.removeEventListener('load', handler)
+      img.removeEventListener('error', handler)
+      previewImageListeners.delete(img)
+      scheduleEditorRefresh()
+    }
+
+    previewImageListeners.set(img, handler)
+    img.addEventListener('load', handler, { once: true })
+    img.addEventListener('error', handler, { once: true })
+  })
+}
+
+const initPreviewSyncWatchers = async () => {
+  cleanupPreviewObserver()
+  await nextTick()
+
+  const preview = editorPanelRef.value?.querySelector('.md-editor-preview')
+  if (!preview) return
+
+  bindPreviewImageListeners()
+
+  previewObserver = new MutationObserver(() => {
+    bindPreviewImageListeners()
+  })
+
+  previewObserver.observe(preview, {
+    childList: true,
+    subtree: true
+  })
+}
+
+const initEditorResizeObserver = () => {
+  resizeObserver?.disconnect()
+
+  if (!editorPanelRef.value || typeof ResizeObserver === 'undefined') return
+
+  resizeObserver = new ResizeObserver((entries) => {
+    const entry = entries[0]
+    if (!entry) return
+
+    const width = Math.round(entry.contentRect.width)
+    const height = Math.round(entry.contentRect.height)
+
+    if (!width || !height) return
+
+    if (!lastEditorPanelRect) {
+      lastEditorPanelRect = { width, height }
+      return
+    }
+
+    const widthChanged = Math.abs(width - lastEditorPanelRect.width) > 1
+    const heightChanged = Math.abs(height - lastEditorPanelRect.height) > 1
+
+    lastEditorPanelRect = { width, height }
+
+    if (!widthChanged && !heightChanged) return
+    if (Date.now() < suppressResizeRefreshUntil) return
+
+    scheduleEditorRefresh()
+  })
+
+  resizeObserver.observe(editorPanelRef.value)
+}
 
 /* ---- 图片上传（md-editor-v3 回调格式） ---- */
 const onUploadImg = async (files, callback) => {
@@ -208,10 +324,17 @@ onMounted(async () => {
     }
   }
   takeSnapshot()
+  initEditorResizeObserver()
+  initPreviewSyncWatchers()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydownSave)
+  if (editorRefreshTimer) {
+    window.clearTimeout(editorRefreshTimer)
+  }
+  resizeObserver?.disconnect()
+  cleanupPreviewObserver()
 })
 </script>
 
@@ -257,12 +380,14 @@ onBeforeUnmount(() => {
           <EmojiPicker @select="insertEditorEmoji" />
         </div>
         <MdEditor
+          ref="mdEditorRef"
           v-model="form.contentMarkdown"
           preview-theme="github"
           :toolbars-exclude="['mermaid', 'katex', 'github']"
           class="md-editor-fill"
           @on-upload-img="onUploadImg"
           @on-html-changed="onHtmlChanged"
+          @on-remount="initPreviewSyncWatchers"
         />
       </div>
 

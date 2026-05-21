@@ -21,6 +21,12 @@ const router = createRouter({
           meta: { title: '仪表盘' }
         },
         {
+          path: '/server-monitor',
+          name: 'serverMonitor',
+          component: () => import('@/view/ServerMonitor/index.vue'),
+          meta: { title: '服务器监测' }
+        },
+        {
           path: '/article/list',
           name: 'articleList',
           component: () => import('@/view/Article/index.vue'),

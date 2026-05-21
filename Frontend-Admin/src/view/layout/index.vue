@@ -16,6 +16,7 @@ const isEditorPage = computed(() => route.path.startsWith('/article/edit'))
 
 const navItems = [
   { path: '/dashboard', icon: 'icon-yibiaopan', label: '仪表盘' },
+  { path: '/server-monitor', icon: 'icon-shield', label: '服务器监测' },
   {
     path: '/article/list',
     icon: 'icon-bianjiwenzhang_huaban',
