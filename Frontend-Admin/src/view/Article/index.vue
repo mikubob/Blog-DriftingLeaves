@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useArticleStore } from '@/stores'
 import { useBatchSelection } from '@/composables/useBatchSelection'
@@ -119,6 +119,19 @@ const publishStatusClass = (isPublished) =>
 
 const topStatusClass = (isTop) =>
   isTop ? 'status-tag is-top' : 'status-tag is-muted'
+
+const selectedIds = computed(() => new Set(selected.value.map((row) => row.id)))
+
+const isRowSelected = (row) => selectedIds.value.has(row.id)
+
+const toggleCardSelection = (row, checked) => {
+  tableRef.value?.toggleRowSelection(row, checked)
+  if (!tableRef.value) {
+    selected.value = checked
+      ? [...selected.value, row]
+      : selected.value.filter((item) => item.id !== row.id)
+  }
+}
 
 onMounted(load)
 </script>
@@ -269,6 +282,74 @@ onMounted(load)
       </el-table>
     </div>
 
+    <div v-loading="articleStore.loading" class="mobile-card-list">
+      <article
+        v-for="row in articleStore.list"
+        :key="row.id"
+        :class="['article-mobile-card', { selected: isRowSelected(row) }]"
+      >
+        <div class="mobile-card-head">
+          <el-checkbox
+            :model-value="isRowSelected(row)"
+            @change="(checked) => toggleCardSelection(row, checked)"
+          />
+          <button class="mobile-title" type="button" @click="openView(row)">
+            {{ row.title }}
+          </button>
+        </div>
+
+        <div class="mobile-status-row">
+          <span :class="publishStatusClass(row.isPublished)">
+            {{ row.isPublished ? '已发布' : '草稿' }}
+          </span>
+          <span :class="topStatusClass(row.isTop)">
+            {{ row.isTop ? '置顶' : '普通' }}
+          </span>
+          <span class="mobile-category">{{ row.categoryName || '未分类' }}</span>
+        </div>
+
+        <dl class="mobile-meta-grid">
+          <div>
+            <dt>阅读</dt>
+            <dd>{{ row.viewCount ?? 0 }}</dd>
+          </div>
+          <div>
+            <dt>评论</dt>
+            <dd>{{ row.commentCount ?? 0 }}</dd>
+          </div>
+          <div>
+            <dt>发布</dt>
+            <dd>{{ fmtDate(row.publishTime || row.createTime) }}</dd>
+          </div>
+        </dl>
+
+        <div class="mobile-slug">{{ row.slug }}</div>
+
+        <div class="mobile-card-actions">
+          <el-button size="small" @click="openView(row)">预览</el-button>
+          <el-button size="small" @click="togglePublish(row)">
+            {{ row.isPublished ? '撤回' : '发布' }}
+          </el-button>
+          <el-button size="small" @click="toggleTop(row)">
+            {{ row.isTop ? '取消置顶' : '置顶' }}
+          </el-button>
+          <el-button size="small" type="primary" plain @click="toEdit(row.id)">
+            编辑
+          </el-button>
+          <el-button size="small" type="danger" plain @click="deleteOne(row)">
+            删除
+          </el-button>
+        </div>
+      </article>
+
+      <div
+        v-if="!articleStore.loading && !articleStore.list.length"
+        class="mobile-empty"
+      >
+        暂无文章
+      </div>
+    </div>
+
     <div class="pagination-wrap">
       <el-pagination
         v-model:current-page="page"
@@ -356,6 +437,10 @@ onMounted(load)
   overflow: hidden;
 }
 
+.mobile-card-list {
+  display: none;
+}
+
 .status-tag {
   display: inline-flex;
   align-items: center;
@@ -441,5 +526,127 @@ onMounted(load)
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .table-wrap {
+    display: none;
+  }
+
+  .mobile-card-list {
+    display: flex;
+    min-height: 120px;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .article-mobile-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid #e4e7ed;
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  .article-mobile-card.selected {
+    border-color: #303133;
+    box-shadow: 0 0 0 1px #303133 inset;
+  }
+
+  .mobile-card-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .mobile-title {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #303133;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.45;
+    text-align: left;
+  }
+
+  .mobile-status-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .mobile-category {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 3px 8px;
+    border: 1px solid #e4e7ed;
+    border-radius: 4px;
+    color: #606266;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .mobile-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+  }
+
+  .mobile-meta-grid div:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .mobile-meta-grid dt {
+    margin: 0 0 2px;
+    color: #909399;
+    font-size: 12px;
+  }
+
+  .mobile-meta-grid dd {
+    min-width: 0;
+    margin: 0;
+    color: #303133;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-slug {
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: #f5f7fa;
+    color: #606266;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-card-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .mobile-card-actions .el-button {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .mobile-empty {
+    padding: 36px 12px;
+    border: 1px solid #e4e7ed;
+    border-radius: 8px;
+    background: #fff;
+    color: #909399;
+    font-size: 14px;
+    text-align: center;
+  }
 }
 </style>

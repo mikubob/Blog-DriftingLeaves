@@ -303,6 +303,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 28px;
   background:
     radial-gradient(
@@ -1323,36 +1324,97 @@ onUnmounted(() => {
 
 @media (max-width: 640px) {
   .login-page {
-    padding: 16px;
+    align-items: flex-start;
+    padding: max(12px, env(safe-area-inset-top)) 12px
+      max(12px, env(safe-area-inset-bottom));
   }
 
-  .login-showcase {
-    padding: 30px 22px 24px;
-  }
-
-  .showcase-panels {
-    grid-template-columns: 1fr;
-  }
-
-  .showcase-copy {
-    padding-top: 94px;
-  }
-
-  .showcase-coffee {
-    top: -10px;
-    right: 40px;
-    width: 128px;
-    height: 118px;
-    transform: scale(0.82);
-    transform-origin: top right;
+  .login-shell {
+    border-radius: 22px;
   }
 
   .login-box {
-    padding: 30px 22px 24px;
+    order: 1;
+    padding: 24px 18px 22px;
+    border-top: 0;
+  }
+
+  .login-showcase {
+    order: 2;
+    min-height: auto;
+    padding: 24px 18px 22px;
+    border-top: 1px solid var(--login-line);
+  }
+
+  .showcase-panels {
+    display: none;
+  }
+
+  .showcase-copy {
+    padding-top: 58px;
+  }
+
+  .showcase-coffee {
+    top: -14px;
+    right: 8px;
+    width: 128px;
+    height: 118px;
+    transform: scale(0.7);
+    transform-origin: top right;
+  }
+
+  .showcase-topline,
+  .showcase-kicker {
+    font-size: 10px;
+  }
+
+  .showcase-title {
+    font-size: 34px;
+    line-height: 1.02;
+  }
+
+  .showcase-title span {
+    font-size: 18px;
+  }
+
+  .showcase-desc {
+    margin-top: 16px;
+    font-size: 14px;
+    line-height: 1.72;
   }
 
   .login-header {
     align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+
+  .login-brand {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+  }
+
+  .brand-icon {
+    font-size: 23px;
+  }
+
+  .login-title {
+    font-size: 25px;
+  }
+
+  .login-subtitle {
+    margin-top: 6px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .field-group {
+    margin-bottom: 2px;
+  }
+
+  :deep(.el-form-item) {
+    margin-bottom: 16px;
   }
 
   .code-row {
@@ -1360,7 +1422,7 @@ onUnmounted(() => {
   }
 
   .code-panel {
-    padding: 10px;
+    padding: 8px;
   }
 
   .code-action {
@@ -1373,7 +1435,33 @@ onUnmounted(() => {
 
   .login-footnote {
     gap: 8px;
+    margin-bottom: 16px;
     letter-spacing: 0.08em;
+  }
+
+  .login-btn {
+    height: 52px;
+    margin-top: 2px;
+    letter-spacing: 0.2em;
+  }
+}
+
+@media (max-width: 420px) {
+  .login-page {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .login-box {
+    padding: 22px 16px 20px;
+  }
+
+  .login-showcase {
+    padding: 22px 16px 20px;
+  }
+
+  .login-footnote {
+    font-size: 10px;
   }
 }
 </style>

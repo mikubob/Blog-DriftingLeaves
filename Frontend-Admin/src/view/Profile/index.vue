@@ -1220,4 +1220,33 @@ onMounted(() => {
   margin-top: 8px;
   border: 1px solid #e4e7ed;
 }
+
+@media (max-width: 768px) {
+  .profile-page {
+    padding: 12px;
+  }
+
+  .tab-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .toolbar-right {
+    width: 100%;
+  }
+
+  .personal-wrap {
+    gap: 18px;
+    flex-direction: column;
+  }
+
+  .personal-form {
+    width: 100%;
+    max-width: none;
+  }
+
+  .skill-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

@@ -635,4 +635,135 @@ onBeforeUnmount(() => {
 .cover-placeholder .iconfont {
   font-size: 22px;
 }
+
+@media (max-width: 1024px) {
+  .edit-body {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .editor-panel {
+    flex: 0 0 auto;
+    height: 62vh;
+    min-height: 460px;
+  }
+
+  .editor-toolbar-emoji {
+    right: 8px;
+    left: auto;
+  }
+
+  .edit-aside {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    overflow: visible;
+    border-top: 1px solid #e4e7ed;
+    border-left: none;
+    padding: 14px;
+  }
+
+  .aside-section {
+    min-width: 0;
+    margin-bottom: 0;
+  }
+
+  .aside-section:nth-child(2),
+  .aside-section:nth-child(5) {
+    grid-column: 1 / -1;
+  }
+
+  .cover-preview {
+    max-height: 180px;
+  }
+}
+
+@media (max-width: 768px) {
+  .edit-topbar {
+    min-height: 52px;
+    padding: 8px 12px;
+    gap: 10px;
+  }
+
+  .edit-actions {
+    gap: 6px;
+  }
+
+  .title-row {
+    padding: 8px 12px;
+  }
+
+  .title-input :deep(.el-input__inner) {
+    font-size: 18px;
+  }
+
+  .editor-panel {
+    height: 58vh;
+    min-height: 420px;
+  }
+
+  .editor-panel :deep(.md-editor-toolbar) {
+    min-width: max-content;
+  }
+
+  .editor-panel :deep(.md-editor-toolbar-wrapper) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .editor-panel :deep(.md-editor-footer) {
+    min-height: 28px;
+  }
+
+  .editor-toolbar-emoji {
+    top: 3px;
+    right: 6px;
+  }
+
+  .edit-aside {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .aside-section:nth-child(2),
+  .aside-section:nth-child(5) {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .edit-topbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .edit-title {
+    width: 100%;
+  }
+
+  .edit-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .edit-actions .el-button {
+    width: 100%;
+    margin-left: 0;
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+
+  .editor-panel {
+    height: 56vh;
+    min-height: 360px;
+  }
+
+  .editor-panel :deep(.md-editor-input-wrapper),
+  .editor-panel :deep(.md-editor-preview-wrapper) {
+    padding: 10px;
+  }
+}
 </style>

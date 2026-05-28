@@ -361,4 +361,21 @@ onMounted(() => {
   font-size: 14px;
   margin-right: 4px;
 }
+
+@media (max-width: 768px) {
+  .category-page {
+    padding: 12px;
+  }
+
+  .tab-toolbar {
+    align-items: stretch;
+    gap: 10px;
+    flex-direction: column;
+  }
+
+  .tab-toolbar-left,
+  .tab-toolbar-right {
+    width: 100%;
+  }
+}
 </style>

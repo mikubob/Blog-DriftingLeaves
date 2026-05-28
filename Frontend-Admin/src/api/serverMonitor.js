@@ -17,10 +17,12 @@ export const getServerMonitorOverview = () =>
   http.get('/admin/server-monitor/overview')
 
 /** 获取负载详情 */
-export const getServerMonitorLoad = () => http.get('/admin/server-monitor/load')
+export const getServerMonitorLoad = () =>
+  http.get('/admin/server-monitor/load')
 
 /** 获取 CPU 详情 */
-export const getServerMonitorCpu = () => http.get('/admin/server-monitor/cpu')
+export const getServerMonitorCpu = () =>
+  http.get('/admin/server-monitor/cpu')
 
 /** 获取内存详情 */
 export const getServerMonitorMemory = () =>

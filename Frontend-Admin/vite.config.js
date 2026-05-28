@@ -154,8 +154,13 @@ function resolveVendorChunk(id) {
 export default defineConfig({
   server: {
     proxy: {
+      '/api/admin/server-monitor': {
+        target: 'http://127.0.0.1:5922',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      },
       '/api': {
-        target: 'http://localhost:5922',
+        target: 'http://127.0.0.1:5922',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
       }

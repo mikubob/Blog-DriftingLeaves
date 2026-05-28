@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores'
 
@@ -8,8 +8,15 @@ const userStore = useUserStore()
 
 /** 侧边栏是否收起 */
 const collapsed = ref(false)
+const isMobile = ref(false)
+const mobileSidebarOpen = ref(false)
 
 const activeMenu = computed(() => route.path)
+
+const isNavActive = (item) => {
+  if (item.path === '/article/list') return route.path.startsWith('/article')
+  return activeMenu.value.startsWith(item.path)
+}
 
 /** 文章编辑页需要全高无内边距布局 */
 const isEditorPage = computed(() => route.path.startsWith('/article/edit'))
@@ -44,14 +51,51 @@ const handleLogout = () => {
     userStore.logoutAction()
   })
 }
+
+const syncViewport = () => {
+  isMobile.value = window.matchMedia('(max-width: 768px)').matches
+  if (!isMobile.value) {
+    mobileSidebarOpen.value = false
+  }
+}
+
+const toggleMobileSidebar = () => {
+  mobileSidebarOpen.value = !mobileSidebarOpen.value
+}
+
+const closeMobileSidebar = () => {
+  mobileSidebarOpen.value = false
+}
+
+watch(
+  () => route.fullPath,
+  () => {
+    closeMobileSidebar()
+  }
+)
+
+onMounted(() => {
+  syncViewport()
+  window.addEventListener('resize', syncViewport, { passive: true })
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncViewport)
+})
 </script>
 
 <template>
   <div class="admin-shell">
+    <div
+      v-show="mobileSidebarOpen"
+      class="sidebar-scrim"
+      @click="closeMobileSidebar"
+    />
+
     <!-- 左侧菜单 -->
-    <aside :class="['sidebar', { collapsed }]">
+    <aside :class="['sidebar', { collapsed, 'mobile-open': mobileSidebarOpen }]">
       <div class="sidebar-logo">
-        <span v-if="!collapsed" class="logo-text">管理控制台</span>
+        <span v-if="!collapsed || isMobile" class="logo-text">管理控制台</span>
         <span v-else class="logo-icon">
           <span class="iconfont icon-guanliduan" />
         </span>
@@ -62,14 +106,20 @@ const handleLogout = () => {
           v-for="item in navItems"
           :key="item.path"
           :to="item.path"
-          :class="['nav-item', { active: activeMenu.startsWith(item.path) }]"
+          :class="['nav-item', { active: isNavActive(item) }]"
+          @click="closeMobileSidebar"
         >
           <span :class="['iconfont', item.icon]" />
-          <span v-if="!collapsed" class="nav-label">{{ item.label }}</span>
+          <span v-if="!collapsed || isMobile" class="nav-label">{{ item.label }}</span>
         </router-link>
       </nav>
 
-      <button class="collapse-btn" @click="collapsed = !collapsed">
+      <button
+        class="collapse-btn"
+        type="button"
+        aria-label="折叠侧边栏"
+        @click="collapsed = !collapsed"
+      >
         <span
           :class="[
             'iconfont',
@@ -83,6 +133,14 @@ const handleLogout = () => {
     <div class="main-wrapper">
       <!-- 顶部栏 -->
       <header class="topbar">
+        <button
+          class="mobile-menu-btn"
+          type="button"
+          aria-label="打开导航菜单"
+          @click="toggleMobileSidebar"
+        >
+          <span class="iconfont icon-guanliduan" />
+        </button>
         <div class="topbar-breadcrumb">
           <el-breadcrumb separator="/">
             <el-breadcrumb-item :to="{ path: '/dashboard' }"
@@ -91,6 +149,7 @@ const handleLogout = () => {
             <el-breadcrumb-item>{{ $route.meta.title }}</el-breadcrumb-item>
           </el-breadcrumb>
         </div>
+        <div class="topbar-title">{{ $route.meta.title }}</div>
         <div class="topbar-right">
           <span class="user-name">
             <span class="iconfont icon-user" />
@@ -98,7 +157,7 @@ const handleLogout = () => {
           </span>
           <button class="logout-btn" @click="handleLogout">
             <span class="iconfont icon-logout" />
-            退出
+            <span class="logout-text">退出</span>
           </button>
         </div>
       </header>
@@ -119,7 +178,13 @@ const handleLogout = () => {
 .admin-shell {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   background-color: #f5f7fa;
+  overflow: hidden;
+}
+
+.sidebar-scrim {
+  display: none;
 }
 
 /* ---- 侧边栏 ---- */
@@ -228,6 +293,12 @@ const handleLogout = () => {
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
+  gap: 16px;
+}
+
+.mobile-menu-btn,
+.topbar-title {
+  display: none;
 }
 
 .topbar-right {
@@ -271,7 +342,7 @@ const handleLogout = () => {
 .page-main {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
+  padding: clamp(16px, 2vw, 24px);
 }
 
 .page-main.editor-page {
@@ -295,5 +366,156 @@ const handleLogout = () => {
 .page-fade-leave-to {
   opacity: 0;
   transform: translateY(-4px);
+}
+
+@media (max-width: 1180px) {
+  .sidebar {
+    width: 208px;
+  }
+
+  .topbar {
+    padding: 0 20px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 200px;
+  }
+
+  .sidebar.collapsed {
+    width: 56px;
+  }
+
+  .nav-item {
+    padding: 11px 18px;
+  }
+
+  .topbar {
+    padding: 0 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 900;
+    display: block;
+    background: rgba(0, 0, 0, 0.28);
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 1000;
+    width: min(82vw, 300px) !important;
+    transform: translateX(-100%);
+    box-shadow: 12px 0 32px rgba(15, 23, 42, 0.16);
+    transition: transform 0.24s ease;
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-logo {
+    justify-content: flex-start;
+    padding: 0 18px;
+  }
+
+  .nav-item {
+    padding: 12px 18px;
+  }
+
+  .collapse-btn {
+    display: none;
+  }
+
+  .topbar {
+    height: 56px;
+    padding: 0 14px;
+  }
+
+  .mobile-menu-btn {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 1px solid #e4e7ed;
+    border-radius: 8px;
+    background: #fff;
+    color: #303133;
+  }
+
+  .mobile-menu-btn .iconfont {
+    font-size: 18px;
+  }
+
+  .topbar-breadcrumb {
+    display: none;
+  }
+
+  .topbar-title {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: #303133;
+    font-size: 15px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topbar-right {
+    gap: 8px;
+  }
+
+  .user-name {
+    max-width: 108px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .logout-btn {
+    width: 36px;
+    height: 36px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .logout-text {
+    display: none;
+  }
+
+  .page-main {
+    padding: 14px;
+  }
+
+  .page-main.editor-page {
+    padding: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .topbar {
+    padding: 0 10px;
+  }
+
+  .user-name {
+    max-width: 86px;
+  }
+
+  .page-main {
+    padding: 10px;
+  }
+
+  .page-main.editor-page {
+    padding: 0;
+  }
 }
 </style>

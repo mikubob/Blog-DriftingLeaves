@@ -506,4 +506,59 @@ onBeforeUnmount(() => {
 .chart-body {
   height: 260px;
 }
+
+@media (max-width: 768px) {
+  .dashboard {
+    gap: 14px;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 14px 12px;
+    gap: 10px;
+  }
+
+  .stat-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .stat-value {
+    font-size: 19px;
+  }
+
+  .chart-row {
+    gap: 14px;
+  }
+
+  .chart-card {
+    padding: 14px;
+  }
+
+  .chart-header :deep(.el-date-editor) {
+    width: 100%;
+  }
+
+  .chart-body {
+    height: 230px;
+  }
+
+  .run-banner {
+    padding: 10px 14px;
+  }
+}
+
+@media (max-width: 520px) {
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-body {
+    height: 220px;
+  }
+}
 </style>

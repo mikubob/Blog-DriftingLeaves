@@ -496,4 +496,29 @@ const handleChangeEmail = async () => {
   align-items: center;
   gap: 10px;
 }
+
+@media (max-width: 768px) {
+  .settings-page {
+    padding: 12px;
+  }
+
+  .tab-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .toolbar-right {
+    width: 100%;
+  }
+
+  .security-form {
+    max-width: none;
+  }
+
+  .inline-action,
+  .code-row {
+    width: 100%;
+  }
+}
 </style>

@@ -72,3 +72,93 @@
   --el-tag-border-color: #c0c4cc;
   --el-tag-text-color: #606266;
 }
+
+@media (max-width: 768px) {
+  .el-dialog {
+    width: min(var(--el-dialog-width, 560px), calc(100vw - 24px)) !important;
+    max-width: calc(100vw - 24px);
+    margin-top: 7vh !important;
+  }
+
+  .el-dialog__header {
+    padding: 16px 16px 8px !important;
+  }
+
+  .el-dialog__body {
+    max-height: 68vh;
+    overflow: auto;
+    padding: 14px 16px !important;
+  }
+
+  .el-dialog__footer {
+    padding: 8px 16px 16px !important;
+  }
+
+  .el-dialog__footer .el-button {
+    min-width: 78px;
+  }
+
+  .el-form-item {
+    display: block;
+  }
+
+  .el-form-item__label {
+    width: auto !important;
+    height: auto;
+    justify-content: flex-start;
+    margin-bottom: 6px;
+    padding: 0;
+    line-height: 1.4;
+  }
+
+  .el-form-item__content {
+    display: flex;
+    width: 100%;
+    margin-left: 0 !important;
+  }
+
+  .el-input,
+  .el-select,
+  .el-textarea,
+  .el-input-number,
+  .el-date-editor.el-input,
+  .el-date-editor.el-input__wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .el-table {
+    font-size: 13px;
+  }
+
+  .el-table .cell {
+    padding: 0 8px;
+  }
+
+  .el-pagination {
+    --el-pagination-button-width: 30px;
+    --el-pagination-button-height: 30px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 520px) {
+  .el-message-box {
+    width: calc(100vw - 24px) !important;
+    max-width: 420px;
+  }
+
+  .el-dialog {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px);
+  }
+
+  .el-dialog__body {
+    max-height: 72vh;
+  }
+
+  .el-pagination__total {
+    width: 100%;
+    text-align: center;
+  }
+}

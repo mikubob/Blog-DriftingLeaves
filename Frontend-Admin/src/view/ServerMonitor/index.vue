@@ -273,8 +273,30 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 768px) {
+  .server-monitor-page {
+    gap: 12px;
+  }
+
   .page-toolbar {
     align-items: stretch;
+    padding: 14px;
+  }
+
+  .page-title {
+    font-size: 18px;
+  }
+
+  .toolbar-actions {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .toolbar-actions .el-button {
+    margin-left: 0;
+  }
+
+  .collect-time {
+    width: 100%;
   }
 }
 </style>
