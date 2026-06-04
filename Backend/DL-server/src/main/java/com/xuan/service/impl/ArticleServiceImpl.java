@@ -69,14 +69,14 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Articles> imp
      * @return 分页结果
      */
     @Override
-    public PageResult<Articles> pageQuery(ArticlePageQueryDTO articlePageQueryDTO) {
-        // 构建 MP 分页对象
-        Page<Articles> page = new Page<>(articlePageQueryDTO.getPage(), articlePageQueryDTO.getPageSize());
+    public PageResult<ArticleVO> pageQuery(ArticlePageQueryDTO articlePageQueryDTO) {
+        // 构建管理端文章列表分页对象，列表不返回正文内容，避免管理列表接口传输过重。
+        Page<ArticleVO> page = new Page<>(articlePageQueryDTO.getPage(), articlePageQueryDTO.getPageSize());
 
-        // 构建查询条件
-        IPage<Articles> articlePage = this.page(page, buildQueryWrapper(articlePageQueryDTO));
+        // 管理端列表需要展示分类名称，因此通过自定义 SQL 关联分类表补齐 categoryName。
+        IPage<ArticleVO> articlePage = baseMapper.pageQueryWithCategory(page, articlePageQueryDTO);
 
-        // 转换为自定义的 PageResult
+        // 转换为统一分页响应结构，保持前端现有 records / total 读取方式不变。
         return PageResult.fromIPage(articlePage);
     }
 
@@ -331,10 +331,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Articles> imp
     public PageResult<ArticleVO> search(String keyword, int page, int pageSize) {
         // 1.创建分页对象
         Page<ArticleVO> mpPage = new Page<>(page, pageSize);
-        
+
         // 2.使用全文索引搜索（通过 Mapper XML）
         IPage<ArticleVO> resultPage = baseMapper.searchWithFullText(mpPage, keyword);
-        
+
         // 3.使用 PageResult.fromIPage() 构建分页结果
         return PageResult.fromIPage(resultPage);
     }
@@ -351,10 +351,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Articles> imp
     public PageResult<BlogArticleVO> getPublishedPage(int page, int pageSize) {
         // 1. 创建分页对象
         Page<BlogArticleVO> mpPage = new Page<>(page, pageSize);
-        
+
         // 2. 查询已发布文章（使用自定义 SQL）
         IPage<BlogArticleVO> resultPage = baseMapper.getPublishedPage(mpPage);
-        
+
         // 3. 返回分页结果
         return PageResult.fromIPage(resultPage);
     }
@@ -415,10 +415,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Articles> imp
     public PageResult<BlogArticleVO> getPublishedByCategoryId(Long categoryId, int page, int pageSize) {
         //1.创建分页对象
         Page<BlogArticleVO> mpPage = new Page<>(page, pageSize);
-        
+
         //2.执行分页查询（使用自定义 SQL）
         IPage<BlogArticleVO> resultPage = baseMapper.getPublishedByCategoryId(mpPage, categoryId);
-        
+
         //3.返回分页结果
         return PageResult.fromIPage(resultPage);
     }
@@ -432,19 +432,19 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Articles> imp
     public List<ArticleArchiveVO> getArchive() {
         // 1. 查询所有已发布文章
         List<ArticleArchiveItemVO> allArticles = baseMapper.getArchiveList();
-        
+
         // 2. 按年月分组
         Map<String, ArticleArchiveVO> archiveMap = new LinkedHashMap<>();
-        
+
         for (ArticleArchiveItemVO item : allArticles) {
             if (item.getPublishTime() == null) {
                 continue;
             }
-            
+
             int year = item.getPublishTime().getYear();
             int month = item.getPublishTime().getMonthValue();
             String key = year + "-" + month;
-            
+
             ArticleArchiveVO archiveVO = archiveMap.computeIfAbsent(key, k ->
                     ArticleArchiveVO.builder()
                             .year(year)
@@ -454,7 +454,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Articles> imp
             );
             archiveVO.getArticles().add(item);
         }
-        
+
         // 3. 返回归档列表
         return new ArrayList<>(archiveMap.values());
     }
@@ -486,10 +486,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Articles> imp
     public PageResult<BlogArticleVO> getPublishedByTagId(Long tagId, int page, int pageSize) {
         //1.创建分页对象
         Page<BlogArticleVO> mpPage = new Page<>(page, pageSize);
-        
+
         //2.执行分页查询（使用自定义 SQL）
         IPage<BlogArticleVO> resultPage = baseMapper.getPublishedByTagId(mpPage, tagId);
-        
+
         //3.返回分页结果
         return PageResult.fromIPage(resultPage);
     }
