@@ -581,6 +581,54 @@ html.dark .msg-submit-btn:hover {
   background: #fff !important;
 }
 
+/* Article reading aids: force monochrome emphasis in dark mode. */
+html.dark .reading-progress .reading-progress-track,
+.reading-progress.is-dark .reading-progress-track {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+html.dark .reading-progress .reading-progress-bar,
+.reading-progress.is-dark .reading-progress-bar {
+  background: #fff !important;
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.35) !important;
+}
+
+html.dark .toc-wrap .toc-title,
+html.dark .toc-wrap .toc-title .iconfont,
+.toc-wrap.is-dark .toc-title,
+.toc-wrap.is-dark .toc-title .iconfont {
+  color: #fff !important;
+}
+
+html.dark .toc-wrap .toc-progress,
+.toc-wrap.is-dark .toc-progress {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+}
+
+html.dark .toc-wrap .toc-item,
+.toc-wrap.is-dark .toc-item {
+  color: rgba(255, 255, 255, 0.68) !important;
+}
+
+html.dark .toc-wrap .toc-item:hover,
+.toc-wrap.is-dark .toc-item:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+}
+
+html.dark .toc-wrap .toc-item.active,
+.toc-wrap.is-dark .toc-item.active {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .toc-wrap .toc-item.active::before,
+.toc-wrap.is-dark .toc-item.active::before {
+  background: #fff !important;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3) !important;
+}
+
 /* === 全局响应式适配 === */
 @media (max-width: 480px) {
   .el-dialog {

@@ -3,7 +3,8 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useThemeStore } from '@/stores'
 
 const props = defineProps({
-  contentHtml: { type: String, default: '' }
+  contentHtml: { type: String, default: '' },
+  progress: { type: Number, default: 0 }
 })
 
 const themeStore = useThemeStore()
@@ -24,6 +25,10 @@ const isDark = computed(() => {
   if (themeStore.mode === 'dark') return true
   if (themeStore.mode === 'light') return false
   return window.matchMedia('(prefers-color-scheme: dark)').matches
+})
+
+const readingPercent = computed(() => {
+  return Math.round(Math.min(100, Math.max(0, props.progress || 0)))
 })
 
 const getHeaderOffset = () => {
@@ -212,10 +217,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div v-if="headings.length" class="toc-wrap">
+  <div v-if="headings.length" class="toc-wrap" :class="{ 'is-dark': isDark }">
     <div class="toc-card side-card toc-desktop">
       <div class="toc-header">
         <h4 class="toc-title"><i class="iconfont icon-guidang" /> 目录</h4>
+        <span class="toc-progress">{{ readingPercent }}%</span>
       </div>
 
       <div ref="tocBodyRef" class="toc-body">
@@ -256,6 +262,9 @@ onUnmounted(() => {
               <i class="iconfont icon-guidang" />
               <span>目录</span>
             </div>
+            <span class="toc-progress toc-mobile-progress">
+              {{ readingPercent }}%
+            </span>
             <button
               class="toc-mobile-close"
               type="button"
@@ -290,7 +299,11 @@ onUnmounted(() => {
 }
 
 .toc-card {
-  --toc-accent: #2f6bff;
+  --toc-accent: var(--blog-text, #303133);
+  --toc-hover-bg: rgba(17, 17, 17, 0.06);
+  --toc-active-bg: rgba(17, 17, 17, 0.08);
+  --toc-active-text: #111111;
+  --toc-active-line: #111111;
   background: var(--blog-card, #fff);
   border: 1px solid var(--blog-border-light, #ebeef5);
   border-radius: 10px;
@@ -306,6 +319,10 @@ onUnmounted(() => {
 
 .toc-header {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 16px 16px 12px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.18);
 }
@@ -323,6 +340,20 @@ onUnmounted(() => {
 .toc-title .iconfont {
   font-size: 15px;
   color: var(--toc-accent);
+}
+
+.toc-progress {
+  flex-shrink: 0;
+  min-width: 44px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(17, 17, 17, 0.06);
+  color: var(--blog-text2, #606266);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .toc-body {
@@ -403,21 +434,54 @@ onUnmounted(() => {
 
 .toc-item:hover {
   color: var(--blog-text, #303133);
-  background: rgba(47, 107, 255, 0.08);
+  background: var(--toc-hover-bg);
 }
 
 .toc-item.active {
-  color: var(--blog-text, #111827);
+  color: var(--toc-active-text);
   font-weight: 700;
-  background: linear-gradient(
-    90deg,
-    rgba(47, 107, 255, 0.14),
-    rgba(47, 107, 255, 0.04)
-  );
+  background: var(--toc-active-bg);
 }
 
 .toc-item.active::before {
-  background: linear-gradient(180deg, #2f6bff 0%, #63a2ff 100%);
+  background: var(--toc-active-line);
+}
+
+.toc-wrap.is-dark .toc-card {
+  --toc-accent: #ffffff;
+  --toc-hover-bg: rgba(255, 255, 255, 0.07);
+  --toc-active-bg: rgba(255, 255, 255, 0.1);
+  --toc-active-text: #ffffff;
+  --toc-active-line: #ffffff;
+}
+
+.toc-wrap.is-dark .toc-title,
+.toc-wrap.is-dark .toc-title .iconfont {
+  color: #ffffff !important;
+}
+
+.toc-wrap.is-dark .toc-progress {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+.toc-wrap.is-dark .toc-item {
+  color: rgba(255, 255, 255, 0.68) !important;
+}
+
+.toc-wrap.is-dark .toc-item:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+}
+
+.toc-wrap.is-dark .toc-item.active {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.toc-wrap.is-dark .toc-item.active::before {
+  background: #ffffff !important;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
 }
 
 .toc-item.level-1 {
@@ -519,6 +583,10 @@ onUnmounted(() => {
   color: var(--toc-accent);
 }
 
+.toc-mobile-progress {
+  margin-left: auto;
+}
+
 .toc-mobile-close {
   width: 32px;
   height: 32px;
@@ -542,59 +610,6 @@ onUnmounted(() => {
 .toc-fade-enter-from,
 .toc-fade-leave-to {
   opacity: 0;
-}
-
-:global(html.dark) .toc-mobile-overlay {
-  background: rgba(3, 8, 20, 0.68);
-  backdrop-filter: blur(10px);
-}
-
-:global(html.dark) .toc-mobile-panel {
-  background: linear-gradient(180deg, #20242d 0%, #171b22 100%);
-  border-top: 1px solid rgba(116, 167, 255, 0.18);
-  box-shadow:
-    0 -18px 46px rgba(0, 0, 0, 0.5),
-    0 1px 0 rgba(255, 255, 255, 0.04) inset;
-}
-
-:global(html.dark) .toc-mobile-head {
-  border-bottom-color: rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-:global(html.dark) .toc-mobile-title {
-  color: #eef3ff;
-}
-
-:global(html.dark) .toc-mobile-title .iconfont {
-  color: #7fb0ff;
-}
-
-:global(html.dark) .toc-mobile-close {
-  background: rgba(255, 255, 255, 0.08);
-  color: #d8e1f0;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
-}
-
-:global(html.dark) .toc-mobile-close:hover {
-  background: rgba(127, 176, 255, 0.16);
-  color: #f5f9ff;
-}
-
-@media (max-width: 960px) {
-  :global(html.dark) .toc-item:hover {
-    color: #f3f7ff;
-    background: rgba(127, 176, 255, 0.12);
-  }
-
-  :global(html.dark) .toc-item.active {
-    color: #f7fbff;
-    background: linear-gradient(
-      90deg,
-      rgba(76, 132, 255, 0.28),
-      rgba(76, 132, 255, 0.08)
-    );
-  }
 }
 
 @media (max-width: 960px) {

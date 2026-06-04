@@ -1,5 +1,13 @@
 <script setup>
-import { ref, inject, onMounted, watch, computed, nextTick } from 'vue'
+import {
+  ref,
+  inject,
+  onMounted,
+  onUnmounted,
+  watch,
+  computed,
+  nextTick
+} from 'vue'
 import { useRoute } from 'vue-router'
 import { useVisitorStore, useBlogStore, useThemeStore } from '@/stores'
 import { getArticleBySlug } from '@/api/article'
@@ -30,11 +38,16 @@ const previewTheme = computed(() => {
     ? 'dark'
     : 'light'
 })
+const isDarkMode = computed(() => previewTheme.value === 'dark')
 
 const article = ref(null)
 const loading = ref(true)
 const liked = ref(false)
 const liking = ref(false)
+const readingProgress = ref(0)
+const articleContentRef = ref(null)
+
+let readingProgressFrame = 0
 
 /* 评论 */
 const comments = ref([])
@@ -126,6 +139,7 @@ const loadArticle = async (slug) => {
     article.value = null
   } finally {
     loading.value = false
+    nextTick(updateReadingProgress)
   }
 }
 
@@ -318,9 +332,43 @@ const lazyContentHtml = computed(() => {
   )
 })
 
+const getHeaderHeight = () => {
+  const header = document.querySelector('.site-header')
+  return header?.getBoundingClientRect().height ?? 58
+}
+
+const calculateReadingProgress = () => {
+  const el = articleContentRef.value
+  if (!el) {
+    readingProgress.value = 0
+    return
+  }
+
+  const rect = el.getBoundingClientRect()
+  const scrollTop = window.scrollY || document.documentElement.scrollTop || 0
+  const articleTop = scrollTop + rect.top
+  const headerHeight = getHeaderHeight()
+  const start = Math.max(0, articleTop - headerHeight - 16)
+  const end = articleTop + el.scrollHeight - window.innerHeight + 80
+  const distance = Math.max(1, end - start)
+  const progress = ((scrollTop - start) / distance) * 100
+
+  readingProgress.value = Math.min(100, Math.max(0, progress))
+}
+
+const updateReadingProgress = () => {
+  if (readingProgressFrame) return
+
+  readingProgressFrame = window.requestAnimationFrame(() => {
+    readingProgressFrame = 0
+    calculateReadingProgress()
+  })
+}
+
 watch(
   () => route.params.slug,
   (slug) => {
+    readingProgress.value = 0
     if (slug) loadArticle(slug)
   }
 )
@@ -329,6 +377,17 @@ onMounted(() => {
   commentForm.value.nickname = visitorStore.nickname
   commentForm.value.emailOrQq = visitorStore.email
   loadArticle(route.params.slug)
+  window.addEventListener('scroll', updateReadingProgress, { passive: true })
+  window.addEventListener('resize', updateReadingProgress)
+  nextTick(updateReadingProgress)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', updateReadingProgress)
+  window.removeEventListener('resize', updateReadingProgress)
+  if (readingProgressFrame) {
+    window.cancelAnimationFrame(readingProgressFrame)
+  }
 })
 </script>
 
@@ -344,6 +403,19 @@ onMounted(() => {
     </div>
 
     <template v-else-if="article">
+      <div
+        class="reading-progress"
+        :class="{ 'is-dark': isDarkMode }"
+        aria-hidden="true"
+      >
+        <div class="reading-progress-track">
+          <div
+            class="reading-progress-bar"
+            :style="{ transform: `scaleX(${readingProgress / 100})` }"
+          />
+        </div>
+      </div>
+
       <div class="article-layout">
         <!-- 左侧: 文章内容 -->
         <div class="article-main">
@@ -355,7 +427,7 @@ onMounted(() => {
             </div>
 
             <!-- 正文 -->
-            <div class="article-content">
+            <div ref="articleContentRef" class="article-content">
               <MdPreview
                 v-if="hasMarkdown"
                 editorId="blog-article-preview"
@@ -744,6 +816,7 @@ onMounted(() => {
         <aside class="article-sidebar">
           <TableOfContents
             :content-html="article.contentMarkdown || article.contentHtml"
+            :progress="readingProgress"
           />
         </aside>
       </div>
@@ -756,6 +829,42 @@ onMounted(() => {
 <style scoped>
 .article-page {
   width: 100%;
+}
+
+.reading-progress {
+  position: fixed;
+  top: 58px;
+  left: 0;
+  right: 0;
+  z-index: 99;
+  height: 4px;
+  pointer-events: none;
+}
+
+.reading-progress-track {
+  width: 100%;
+  height: 100%;
+  background: rgba(17, 17, 17, 0.08);
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+}
+
+.reading-progress-bar {
+  width: 100%;
+  height: 100%;
+  transform-origin: left center;
+  background: #111111;
+  box-shadow: 0 0 14px rgba(17, 17, 17, 0.18);
+  transition: transform 0.12s linear;
+}
+
+.reading-progress.is-dark .reading-progress-track {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.reading-progress.is-dark .reading-progress-bar {
+  background: #ffffff !important;
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.32) !important;
 }
 
 .loading-wrap {
