@@ -33,6 +33,7 @@ const onHtmlChanged = (html) => {
 
 const saving = ref(false)
 const uploadingCover = ref(false)
+const wordCount = computed(() => form.value.contentMarkdown.trim().length)
 const editorPanelRef = ref(null)
 const mdEditorRef = ref(null)
 
@@ -393,6 +394,14 @@ onBeforeUnmount(() => {
 
       <!-- 元数据侧边栏 -->
       <aside class="edit-aside">
+        <div class="aside-mobile-head">
+          <div>
+            <span class="aside-mobile-title">发布设置</span>
+            <span class="aside-mobile-desc">完善分类、标签与封面</span>
+          </div>
+          <span class="mobile-word-count">{{ wordCount }} 字</span>
+        </div>
+
         <div class="aside-section">
           <div class="aside-label">Slug <span class="req">*</span></div>
           <el-input
@@ -403,7 +412,7 @@ onBeforeUnmount(() => {
           />
         </div>
 
-        <div class="aside-section">
+        <div class="aside-section section-summary">
           <div class="aside-label">摘要</div>
           <el-input
             v-model="form.summary"
@@ -449,7 +458,7 @@ onBeforeUnmount(() => {
           </el-select>
         </div>
 
-        <div class="aside-section">
+        <div class="aside-section section-cover">
           <div class="aside-label">封面图</div>
           <el-upload
             :show-file-list="false"
@@ -587,6 +596,9 @@ onBeforeUnmount(() => {
   border-left: 1px solid #e4e7ed;
   padding: 14px 12px;
 }
+.aside-mobile-head {
+  display: none;
+}
 .aside-section {
   margin-bottom: 18px;
 }
@@ -669,8 +681,8 @@ onBeforeUnmount(() => {
     margin-bottom: 0;
   }
 
-  .aside-section:nth-child(2),
-  .aside-section:nth-child(5) {
+  .section-summary,
+  .section-cover {
     grid-column: 1 / -1;
   }
 
@@ -680,27 +692,59 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 768px) {
+  .article-edit {
+    height: 100%;
+    overflow: hidden;
+    background: #f6f7fb;
+  }
+
   .edit-topbar {
-    min-height: 52px;
-    padding: 8px 12px;
+    min-height: 50px;
+    padding: 7px 10px;
     gap: 10px;
+    box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
   }
 
   .edit-actions {
     gap: 6px;
   }
 
+  .edit-actions .el-button {
+    min-height: 34px;
+    margin-left: 0;
+    border-radius: 8px;
+  }
+
   .title-row {
-    padding: 8px 12px;
+    position: relative;
+    z-index: 2;
+    padding: 10px 12px 12px;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
   }
 
   .title-input :deep(.el-input__inner) {
-    font-size: 18px;
+    min-height: 40px;
+    font-size: 19px;
+    line-height: 1.35;
+  }
+
+  .edit-body {
+    display: block;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 10px 10px 18px;
+    -webkit-overflow-scrolling: touch;
   }
 
   .editor-panel {
-    height: 58vh;
-    min-height: 420px;
+    height: min(68vh, 640px);
+    min-height: 500px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
   }
 
   .editor-panel :deep(.md-editor-toolbar) {
@@ -710,60 +754,162 @@ onBeforeUnmount(() => {
   .editor-panel :deep(.md-editor-toolbar-wrapper) {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    background: #fff;
+    border-bottom-color: #eef0f4;
+    scrollbar-width: none;
+  }
+
+  .editor-panel :deep(.md-editor-toolbar-wrapper::-webkit-scrollbar) {
+    display: none;
+  }
+
+  .editor-panel :deep(.md-editor-toolbar-item) {
+    min-width: 36px;
+    height: 36px;
+  }
+
+  .editor-panel :deep(.md-editor-content) {
+    font-size: 15px;
+    line-height: 1.75;
+  }
+
+  .editor-panel :deep(.cm-content),
+  .editor-panel :deep(textarea) {
+    font-size: 15px;
+    line-height: 1.75;
   }
 
   .editor-panel :deep(.md-editor-footer) {
-    min-height: 28px;
+    min-height: 30px;
+    background: #fff;
   }
 
   .editor-toolbar-emoji {
-    top: 3px;
-    right: 6px;
+    top: 4px;
+    right: 8px;
   }
 
   .edit-aside {
     grid-template-columns: 1fr;
-    gap: 12px;
-    padding: 12px;
+    gap: 13px;
+    margin-top: 12px;
+    padding: 14px 12px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
   }
 
-  .aside-section:nth-child(2),
-  .aside-section:nth-child(5) {
+  .aside-mobile-head {
+    display: flex;
+    grid-column: 1 / -1;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 2px;
+  }
+
+  .aside-mobile-head > div {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .aside-mobile-title {
+    color: #303133;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .aside-mobile-desc {
+    color: #909399;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .mobile-word-count {
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: #f2f4f8;
+    color: #606266;
+    padding: 4px 9px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .aside-label {
+    margin-bottom: 7px;
+    font-size: 13px;
+  }
+
+  .edit-aside :deep(.el-input__wrapper),
+  .edit-aside :deep(.el-select__wrapper),
+  .edit-aside :deep(.el-textarea__inner) {
+    min-height: 38px;
+    border-radius: 8px;
+  }
+
+  .edit-aside :deep(.el-textarea__inner) {
+    min-height: 92px !important;
+  }
+
+  .section-summary,
+  .section-cover {
     grid-column: auto;
   }
 }
 
 @media (max-width: 520px) {
   .edit-topbar {
-    align-items: flex-start;
-    flex-wrap: wrap;
+    align-items: center;
+    flex-wrap: nowrap;
   }
 
   .edit-title {
-    width: 100%;
+    width: auto;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .edit-actions {
-    width: 100%;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: auto;
+    flex-shrink: 0;
+    display: flex;
   }
 
   .edit-actions .el-button {
-    width: 100%;
-    margin-left: 0;
-    padding-right: 8px;
-    padding-left: 8px;
+    width: auto;
+    min-width: 46px;
+    padding-right: 9px;
+    padding-left: 9px;
+    font-size: 12px;
   }
 
   .editor-panel {
-    height: 56vh;
-    min-height: 360px;
+    height: calc(100dvh - 194px);
+    min-height: 460px;
   }
 
   .editor-panel :deep(.md-editor-input-wrapper),
   .editor-panel :deep(.md-editor-preview-wrapper) {
-    padding: 10px;
+    padding: 12px 10px;
+  }
+
+  .editor-panel :deep(.md-editor-content) {
+    font-size: 14px;
+  }
+
+  .cover-placeholder {
+    height: 118px;
+  }
+
+  .cover-preview {
+    max-height: 220px;
   }
 }
 </style>
