@@ -156,6 +156,7 @@ const navItems = [
   },
   { label: '博客', icon: 'icon-boke', to: '/' },
   { label: '归档', icon: 'icon-guidang', to: '/archive' },
+  { label: '热门', icon: 'icon-fire', to: '/hot', isSvg: true },
   { label: '友链', icon: 'icon-lianjie', to: '/links' },
   { label: '留言', icon: 'icon-liuyan', to: '/message' },
   { label: '关于', icon: 'icon-guanyu', to: '/about' },
@@ -250,10 +251,12 @@ onUnmounted(() => {
               rel="noopener"
               class="nav-link"
             >
-              <i :class="['iconfont', item.icon]" /> {{ item.label }}
+              <svg v-if="item.isSvg" class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+              <i v-else :class="['iconfont', item.icon]" /> {{ item.label }}
             </a>
             <router-link v-else :to="item.to" class="nav-link">
-              <i :class="['iconfont', item.icon]" /> {{ item.label }}
+              <svg v-if="item.isSvg" class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+              <i v-else :class="['iconfont', item.icon]" /> {{ item.label }}
             </router-link>
           </template>
         </nav>
@@ -395,7 +398,8 @@ onUnmounted(() => {
         class="nav-mobile-link"
         @click="navTo(item)"
       >
-        <i :class="['iconfont', item.icon]" /> {{ item.label }}
+        <svg v-if="item.isSvg" class="nav-mobile-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+        <i v-else :class="['iconfont', item.icon]" /> {{ item.label }}
       </a>
       <a class="nav-mobile-link" @click="toggleSearch">
         <i class="iconfont icon-sousuo" /> 搜索
@@ -525,6 +529,11 @@ onUnmounted(() => {
 }
 .nav-link .iconfont {
   font-size: 14px;
+}
+.nav-link .nav-svg-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 .nav-link:hover {
   color: #fff;
@@ -1113,6 +1122,11 @@ onUnmounted(() => {
 }
 .nav-mobile-link .iconfont {
   font-size: 15px;
+}
+.nav-mobile-link .nav-mobile-svg-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
 }
 .nav-mobile-link:hover {
   color: #303133;

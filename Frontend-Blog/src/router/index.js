@@ -39,6 +39,12 @@ const router = createRouter({
           meta: { title: '归档' }
         },
         {
+          path: 'hot',
+          name: 'hot',
+          component: () => import('@/view/Hot/index.vue'),
+          meta: { title: '热门文章' }
+        },
+        {
           path: 'links',
           name: 'links',
           component: () => import('@/view/Links/index.vue'),

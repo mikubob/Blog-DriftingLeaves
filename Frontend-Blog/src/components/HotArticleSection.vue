@@ -123,7 +123,7 @@ onMounted(loadHotArticles)
       <div class="hot-lead-wrap">
         <div class="hot-lead-intro">
           <div class="hot-badge">
-            <span class="hot-rank">TOP 1</span>
+            <span class="hot-rank">1</span>
             <span class="hot-metric">
               <i class="iconfont" :class="metricIcon" />
               {{ leadArticle.hotValue ?? 0 }}
@@ -144,8 +144,8 @@ onMounted(loadHotArticles)
           class="hot-item"
         >
           <div class="hot-item-head">
-            <div class="hot-item-rank">
-              TOP {{ index + 2 }}
+            <div class="hot-item-rank" :class="`rank-${index + 2}`">
+              {{ index + 2 }}
             </div>
             <span class="hot-item-score">
               <i class="iconfont" :class="metricIcon" />
@@ -372,10 +372,10 @@ onMounted(loadHotArticles)
 
 .hot-rank {
   font-family: var(--blog-serif);
-  font-size: 17px;
+  font-size: 24px;
+  font-weight: 700;
   line-height: 1;
-  color: var(--blog-text);
-  letter-spacing: 0.08em;
+  color: #c0392b;
 }
 
 .hot-metric {
@@ -443,10 +443,30 @@ onMounted(loadHotArticles)
 }
 
 .hot-item-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 6px;
   font-family: var(--blog-serif);
   font-size: 14px;
-  color: var(--blog-text3);
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  line-height: 1;
+}
+.hot-item-rank.rank-2 {
+  background: #fef5eb;
+  color: #d35400;
+}
+.hot-item-rank.rank-3 {
+  background: #fffbeb;
+  color: #b7950b;
+}
+.hot-item-rank.rank-4,
+.hot-item-rank.rank-5 {
+  background: #f5f5f5;
+  color: #b0b0b0;
 }
 
 .hot-item-body {
