@@ -21,7 +21,7 @@ const router = useRouter()
 const articles = ref([])
 const total = ref(0)
 const page = ref(1)
-const pageSize = 10
+const pageSize = 6
 const loading = ref(false)
 const searchKeyword = ref('')
 const showTimeWidgets = ref(false)
@@ -143,6 +143,9 @@ onUnmounted(() => {
 
 .left-widget-col {
   min-width: 0;
+  position: sticky;
+  top: 74px;
+  align-self: flex-start;
 }
 
 .article-col {
@@ -253,6 +256,7 @@ onUnmounted(() => {
 
   .left-widget-col {
     grid-area: left;
+    position: static;
   }
 
   :deep(.sidebar) {
