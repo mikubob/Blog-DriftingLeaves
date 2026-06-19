@@ -13,16 +13,6 @@ const activeMetric = ref('view')
 const hotArticles = ref([])
 const loading = ref(false)
 
-const scopeOptions = [
-  { label: '全站', value: 'site' },
-  { label: '本月', value: 'month' }
-]
-
-const metricOptions = [
-  { label: '浏览热榜', value: 'view' },
-  { label: '点赞热榜', value: 'like' }
-]
-
 const leadArticle = computed(() => hotArticles.value[0] ?? null)
 const restArticles = computed(() => hotArticles.value.slice(1, 5))
 const scopeLabel = computed(() =>
@@ -84,31 +74,28 @@ onMounted(loadHotArticles)
       </div>
 
       <div class="hot-controls">
-        <div class="hot-switch hot-switch-scope">
-          <button
-            v-for="option in scopeOptions"
-            :key="option.value"
-            type="button"
-            class="hot-switch-btn"
-            :class="{ active: activeScope === option.value }"
-            @click="activeScope = option.value"
-          >
-            {{ option.label }}
-          </button>
-        </div>
+        <label class="hot-filter-switch hot-switch-scope" aria-label="切换范围">
+          <input
+            type="checkbox"
+            :checked="activeScope === 'month'"
+            @change="activeScope = $event.target.checked ? 'month' : 'site'"
+          />
+          <span>全站</span>
+          <span>本月</span>
+        </label>
 
-        <div class="hot-switch hot-switch-metric">
-          <button
-            v-for="option in metricOptions"
-            :key="option.value"
-            type="button"
-            class="hot-switch-btn"
-            :class="{ active: activeMetric === option.value }"
-            @click="activeMetric = option.value"
-          >
-            {{ option.label }}
-          </button>
-        </div>
+        <label
+          class="hot-filter-switch hot-switch-metric"
+          aria-label="切换指标"
+        >
+          <input
+            type="checkbox"
+            :checked="activeMetric === 'like'"
+            @change="activeMetric = $event.target.checked ? 'like' : 'view'"
+          />
+          <span>浏览热榜</span>
+          <span>点赞热榜</span>
+        </label>
       </div>
     </div>
 
@@ -161,9 +148,18 @@ onMounted(loadHotArticles)
               {{ article.summary }}
             </p>
             <div class="hot-item-meta">
-              <span><i class="iconfont icon-time" /> {{ fmtDate(article.publishTime) }}</span>
-              <span><i class="iconfont icon-eye" /> {{ article.viewCount ?? 0 }}</span>
-              <span><i class="iconfont icon-dianzan" /> {{ article.likeCount ?? 0 }}</span>
+              <span
+                ><i class="iconfont icon-time" />
+                {{ fmtDate(article.publishTime) }}</span
+              >
+              <span
+                ><i class="iconfont icon-eye" />
+                {{ article.viewCount ?? 0 }}</span
+              >
+              <span
+                ><i class="iconfont icon-dianzan" />
+                {{ article.likeCount ?? 0 }}</span
+              >
             </div>
           </div>
         </router-link>
@@ -180,7 +176,11 @@ onMounted(loadHotArticles)
   margin-bottom: 18px;
   padding: 16px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.98)),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.94),
+      rgba(255, 255, 255, 0.98)
+    ),
     var(--blog-card);
   border: 1px solid var(--blog-border-light);
   border-radius: 14px;
@@ -282,15 +282,6 @@ onMounted(loadHotArticles)
   white-space: nowrap;
 }
 
-.hot-switch {
-  display: inline-flex;
-  gap: 8px;
-  padding: 4px;
-  background: var(--blog-hover);
-  border-radius: 999px;
-  border: 1px solid var(--blog-border-light);
-}
-
 .hot-controls {
   display: flex;
   align-items: center;
@@ -300,36 +291,100 @@ onMounted(loadHotArticles)
   flex-shrink: 0;
 }
 
-.hot-switch-scope .hot-switch-btn {
-  min-width: 62px;
-}
+.hot-filter-switch {
+  --_switch-padding: 4px;
+  --_label-padding: 8px 14px;
+  --_switch-easing: cubic-bezier(0.47, 1.64, 0.41, 0.8);
 
-.hot-switch-metric .hot-switch-btn {
-  min-width: 92px;
-}
-
-.hot-switch-btn {
-  border: none;
-  background: transparent;
-  color: var(--blog-text2);
-  font-size: 13px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  cursor: pointer;
-  transition:
-    background 0.2s ease,
-    color 0.2s ease,
-    transform 0.2s ease;
-}
-
-.hot-switch-btn.active {
-  background: var(--blog-card);
   color: var(--blog-text);
+  width: fit-content;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  position: relative;
+  isolation: isolate;
+  border-radius: 9999px;
+  cursor: pointer;
+  background: var(--blog-hover);
+  border: 1px solid var(--blog-border-light);
+  padding: var(--_switch-padding);
+}
+
+.hot-filter-switch input[type='checkbox'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.hot-filter-switch > span {
+  display: grid;
+  place-content: center;
+  transition: opacity 300ms ease-in-out 150ms;
+  padding: var(--_label-padding);
+  font-size: 13px;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* switch slider */
+.hot-filter-switch::before {
+  content: '';
+  position: absolute;
+  border-radius: inherit;
+  background-color: var(--blog-card);
+  inset: var(--_switch-padding) 50% var(--_switch-padding)
+    var(--_switch-padding);
+  transition:
+    inset 500ms var(--_switch-easing),
+    background-color 500ms ease-in-out;
+  z-index: -1;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-.hot-switch-btn:hover {
-  color: var(--blog-text);
+/* focus */
+.hot-filter-switch:focus-within {
+  outline: 2px solid var(--blog-text2);
+  outline-offset: 2px;
+}
+
+/* hover opacity on the side that will be selected */
+.hot-filter-switch:has(input:checked):hover > span:first-of-type,
+.hot-filter-switch:has(input:not(:checked)):hover > span:last-of-type {
+  opacity: 1;
+  transition-delay: 0ms;
+  transition-duration: 100ms;
+}
+
+/* hover slider peek */
+.hot-filter-switch:has(input:checked):hover::before {
+  inset: var(--_switch-padding) var(--_switch-padding) var(--_switch-padding)
+    45%;
+}
+
+.hot-filter-switch:has(input:not(:checked)):hover::before {
+  inset: var(--_switch-padding) 45% var(--_switch-padding)
+    var(--_switch-padding);
+}
+
+/* checked - move slider to right */
+.hot-filter-switch:has(input:checked)::before {
+  inset: var(--_switch-padding) var(--_switch-padding) var(--_switch-padding)
+    50%;
+}
+
+/* opacity states */
+.hot-filter-switch > span:last-of-type,
+.hot-filter-switch > input:checked + span:first-of-type {
+  opacity: 0.75;
+}
+
+.hot-filter-switch > input:checked ~ span:last-of-type {
+  opacity: 1;
 }
 
 .hot-grid {
@@ -609,7 +664,7 @@ onMounted(loadHotArticles)
     gap: 10px 12px;
   }
 
-  .hot-switch {
+  .hot-filter-switch {
     width: 100%;
   }
 }
@@ -630,13 +685,8 @@ onMounted(loadHotArticles)
     align-items: stretch;
   }
 
-  .hot-switch {
+  .hot-filter-switch {
     width: 100%;
-    justify-content: space-between;
-  }
-
-  .hot-switch-btn {
-    flex: 1;
   }
 }
 

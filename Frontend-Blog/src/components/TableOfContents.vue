@@ -280,7 +280,10 @@ onUnmounted(() => {
                 v-for="h in headings"
                 :key="`mobile-${h.id}`"
                 class="toc-item"
-                :class="{ active: activeId === h.id, [`level-${h.level}`]: true }"
+                :class="{
+                  active: activeId === h.id,
+                  [`level-${h.level}`]: true
+                }"
                 @click="scrollTo(h.id)"
               >
                 <span class="toc-item-text">{{ h.text }}</span>

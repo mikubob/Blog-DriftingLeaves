@@ -17,22 +17,6 @@ const activeMetric = ref('view')
 const hotArticles = ref([])
 const loading = ref(false)
 
-const scopeOptions = [
-  { label: '全站', value: 'site' },
-  { label: '本月', value: 'month' }
-]
-
-const metricOptions = [
-  { label: '浏览热榜', value: 'view' },
-  { label: '点赞热榜', value: 'like' }
-]
-
-const scopeLabel = computed(() =>
-  activeScope.value === 'site' ? '全站' : '本月'
-)
-const metricLabel = computed(() =>
-  activeMetric.value === 'view' ? '浏览量' : '点赞量'
-)
 const metricIcon = computed(() =>
   activeMetric.value === 'view' ? 'icon-eye' : 'icon-dianzan'
 )
@@ -67,8 +51,8 @@ const goArticle = (slug) => router.push(`/article/${slug}`)
 watch([activeScope, activeMetric], loadHotArticles)
 
 onMounted(() => {
-  articleTitle.value = '热门文章'
-  articleMeta.value = `${scopeLabel.value} · 按 ${metricLabel.value} 排序`
+  articleTitle.value = '热门'
+  articleMeta.value = '网站流量TOP'
   loadHotArticles()
 })
 </script>
@@ -81,38 +65,47 @@ onMounted(() => {
           <div class="card-header">
             <div class="header-left">
               <span class="header-icon">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"
+                  />
                 </svg>
               </span>
               <span class="header-title">热门文章</span>
-              <span class="header-note">{{ scopeLabel }} · 按 {{ metricLabel }} 排序</span>
+              <span class="header-note">网站流量TOP</span>
             </div>
             <div class="header-controls">
-              <div class="hot-switch">
-                <button
-                  v-for="option in scopeOptions"
-                  :key="option.value"
-                  type="button"
-                  class="switch-btn"
-                  :class="{ active: activeScope === option.value }"
-                  @click="activeScope = option.value"
-                >
-                  {{ option.label }}
-                </button>
-              </div>
-              <div class="hot-switch">
-                <button
-                  v-for="option in metricOptions"
-                  :key="option.value"
-                  type="button"
-                  class="switch-btn"
-                  :class="{ active: activeMetric === option.value }"
-                  @click="activeMetric = option.value"
-                >
-                  {{ option.label }}
-                </button>
-              </div>
+              <label class="hot-filter-switch" aria-label="切换范围">
+                <input
+                  type="checkbox"
+                  :checked="activeScope === 'month'"
+                  @change="
+                    activeScope = $event.target.checked ? 'month' : 'site'
+                  "
+                />
+                <span>全站</span>
+                <span>本月</span>
+              </label>
+              <label class="hot-filter-switch" aria-label="切换指标">
+                <input
+                  type="checkbox"
+                  :checked="activeMetric === 'like'"
+                  @change="
+                    activeMetric = $event.target.checked ? 'like' : 'view'
+                  "
+                />
+                <span>浏览热榜</span>
+                <span>点赞热榜</span>
+              </label>
             </div>
           </div>
 
@@ -141,7 +134,11 @@ onMounted(() => {
                 <span v-else class="rank-num">{{ index + 1 }}</span>
               </div>
               <div v-if="article.coverImage" class="item-cover">
-                <img :src="article.coverImage" :alt="article.title" loading="lazy" />
+                <img
+                  :src="article.coverImage"
+                  :alt="article.title"
+                  loading="lazy"
+                />
               </div>
               <div class="item-content">
                 <div class="item-head">
@@ -158,9 +155,18 @@ onMounted(() => {
                   {{ article.summary }}
                 </p>
                 <div class="item-meta">
-                  <span><i class="iconfont icon-time" /> {{ fmtDate(article.publishTime) }}</span>
-                  <span><i class="iconfont icon-eye" /> {{ article.viewCount ?? 0 }}</span>
-                  <span><i class="iconfont icon-dianzan" /> {{ article.likeCount ?? 0 }}</span>
+                  <span
+                    ><i class="iconfont icon-time" />
+                    {{ fmtDate(article.publishTime) }}</span
+                  >
+                  <span
+                    ><i class="iconfont icon-eye" />
+                    {{ article.viewCount ?? 0 }}</span
+                  >
+                  <span
+                    ><i class="iconfont icon-dianzan" />
+                    {{ article.likeCount ?? 0 }}</span
+                  >
                 </div>
               </div>
             </div>
@@ -232,34 +238,100 @@ onMounted(() => {
   gap: 10px;
   flex-wrap: wrap;
 }
-.hot-switch {
-  display: inline-flex;
-  gap: 4px;
-  padding: 3px;
-  background: var(--blog-hover);
-  border-radius: 999px;
-  border: 1px solid var(--blog-border-light);
-}
-.switch-btn {
-  border: none;
-  background: transparent;
-  color: var(--blog-text2);
-  font-size: 12px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  cursor: pointer;
-  transition:
-    background 0.2s ease,
-    color 0.2s ease;
-  white-space: nowrap;
-}
-.switch-btn.active {
-  background: var(--blog-card);
+.hot-filter-switch {
+  --_switch-padding: 3px;
+  --_label-padding: 6px 12px;
+  --_switch-easing: cubic-bezier(0.47, 1.64, 0.41, 0.8);
+
   color: var(--blog-text);
+  width: fit-content;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  position: relative;
+  isolation: isolate;
+  border-radius: 9999px;
+  cursor: pointer;
+  background: var(--blog-hover);
+  border: 1px solid var(--blog-border-light);
+  padding: var(--_switch-padding);
+}
+
+.hot-filter-switch input[type='checkbox'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.hot-filter-switch > span {
+  display: grid;
+  place-content: center;
+  transition: opacity 300ms ease-in-out 150ms;
+  padding: var(--_label-padding);
+  font-size: 12px;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* switch slider */
+.hot-filter-switch::before {
+  content: '';
+  position: absolute;
+  border-radius: inherit;
+  background-color: var(--blog-card);
+  inset: var(--_switch-padding) 50% var(--_switch-padding)
+    var(--_switch-padding);
+  transition:
+    inset 500ms var(--_switch-easing),
+    background-color 500ms ease-in-out;
+  z-index: -1;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
-.switch-btn:hover:not(.active) {
-  color: var(--blog-text);
+
+/* focus */
+.hot-filter-switch:focus-within {
+  outline: 2px solid var(--blog-text2);
+  outline-offset: 2px;
+}
+
+/* hover opacity on the side that will be selected */
+.hot-filter-switch:has(input:checked):hover > span:first-of-type,
+.hot-filter-switch:has(input:not(:checked)):hover > span:last-of-type {
+  opacity: 1;
+  transition-delay: 0ms;
+  transition-duration: 100ms;
+}
+
+/* hover slider peek */
+.hot-filter-switch:has(input:checked):hover::before {
+  inset: var(--_switch-padding) var(--_switch-padding) var(--_switch-padding)
+    45%;
+}
+
+.hot-filter-switch:has(input:not(:checked)):hover::before {
+  inset: var(--_switch-padding) 45% var(--_switch-padding)
+    var(--_switch-padding);
+}
+
+/* checked - move slider to right */
+.hot-filter-switch:has(input:checked)::before {
+  inset: var(--_switch-padding) var(--_switch-padding) var(--_switch-padding)
+    50%;
+}
+
+/* opacity states */
+.hot-filter-switch > span:last-of-type,
+.hot-filter-switch > input:checked + span:first-of-type {
+  opacity: 0.75;
+}
+
+.hot-filter-switch > input:checked ~ span:last-of-type {
+  opacity: 1;
 }
 
 /* 骨架屏 */
@@ -351,7 +423,11 @@ onMounted(() => {
   border-color: #d5d8df;
 }
 .hot-item.is-top {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.94));
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(255, 255, 255, 0.94)
+  );
 }
 
 .item-rank {
@@ -499,12 +575,9 @@ onMounted(() => {
   .header-controls {
     width: 100%;
   }
-  .hot-switch {
+  .hot-filter-switch {
     flex: 1;
-  }
-  .switch-btn {
-    flex: 1;
-    text-align: center;
+    width: auto;
   }
 }
 

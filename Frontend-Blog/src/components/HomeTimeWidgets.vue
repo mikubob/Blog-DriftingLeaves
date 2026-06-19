@@ -1,7 +1,15 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 
-const weekdayMap = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
+const weekdayMap = [
+  '星期日',
+  '星期一',
+  '星期二',
+  '星期三',
+  '星期四',
+  '星期五',
+  '星期六'
+]
 const now = ref(new Date())
 const solarFactory = shallowRef(null)
 let timer = null
@@ -62,7 +70,9 @@ const currentLunar = computed(() => {
   if (!solarFactory.value) return null
 
   const time = now.value
-  return solarFactory.value.fromYmd(time.getFullYear(), time.getMonth() + 1, time.getDate()).getLunar()
+  return solarFactory.value
+    .fromYmd(time.getFullYear(), time.getMonth() + 1, time.getDate())
+    .getLunar()
 })
 
 const cnDateText = computed(() => {
@@ -72,7 +82,9 @@ const cnDateText = computed(() => {
 
   const parts = lunarFormatter.formatToParts(now.value)
   const monthText = parts.find((part) => part.type === 'month')?.value ?? ''
-  const dayNumber = Number(parts.find((part) => part.type === 'day')?.value ?? '')
+  const dayNumber = Number(
+    parts.find((part) => part.type === 'day')?.value ?? ''
+  )
   const dayText = lunarDayMap[dayNumber] ?? `${dayNumber}日`
 
   return `${monthText}${dayText}`
@@ -107,7 +119,9 @@ const almanacInfo = computed(() => {
 
 const currentDayText = computed(() => pad(now.value.getDate()))
 const secondRotation = computed(() => now.value.getSeconds() * 6)
-const minuteRotation = computed(() => now.value.getMinutes() * 6 + now.value.getSeconds() * 0.1)
+const minuteRotation = computed(
+  () => now.value.getMinutes() * 6 + now.value.getSeconds() * 0.1
+)
 const hourRotation = computed(() => {
   const hours = now.value.getHours() % 12
   return hours * 30 + now.value.getMinutes() * 0.5
@@ -134,14 +148,26 @@ const yearRemainingRatio = computed(() => {
 
 const monthRemainingRatio = computed(() => {
   const current = now.value.getTime()
-  const start = new Date(now.value.getFullYear(), now.value.getMonth(), 1).getTime()
-  const end = new Date(now.value.getFullYear(), now.value.getMonth() + 1, 1).getTime()
+  const start = new Date(
+    now.value.getFullYear(),
+    now.value.getMonth(),
+    1
+  ).getTime()
+  const end = new Date(
+    now.value.getFullYear(),
+    now.value.getMonth() + 1,
+    1
+  ).getTime()
   return getRemainingRatio(start, end, current)
 })
 
 const dayRemainingRatio = computed(() => {
   const current = now.value.getTime()
-  const start = new Date(now.value.getFullYear(), now.value.getMonth(), now.value.getDate()).getTime()
+  const start = new Date(
+    now.value.getFullYear(),
+    now.value.getMonth(),
+    now.value.getDate()
+  ).getTime()
   const end = new Date(
     now.value.getFullYear(),
     now.value.getMonth(),
@@ -257,13 +283,17 @@ onUnmounted(() => {
         </span>
         <span
           class="clock-hand clock-hand--minute"
-          :style="{ transform: `translateX(-50%) rotate(${minuteRotation}deg)` }"
+          :style="{
+            transform: `translateX(-50%) rotate(${minuteRotation}deg)`
+          }"
         >
           <span class="clock-hand-shape" />
         </span>
         <span
           class="clock-hand clock-hand--second"
-          :style="{ transform: `translateX(-50%) rotate(${secondRotation}deg)` }"
+          :style="{
+            transform: `translateX(-50%) rotate(${secondRotation}deg)`
+          }"
         >
           <span class="clock-hand-shape" />
         </span>
@@ -274,7 +304,11 @@ onUnmounted(() => {
       <div class="clock-ganzhi">{{ almanacInfo.ganzhi }}日</div>
     </div>
 
-    <div class="time-progress-card" tabindex="0" aria-label="日期与黄历信息卡片">
+    <div
+      class="time-progress-card"
+      tabindex="0"
+      aria-label="日期与黄历信息卡片"
+    >
       <div class="time-progress-panel time-progress-panel--front">
         <div class="time-progress-head">
           <div class="time-progress-day">{{ currentDayText }}</div>
@@ -285,10 +319,19 @@ onUnmounted(() => {
         </div>
         <div class="time-progress-divider" />
         <div class="time-progress-rings">
-          <div v-for="item in progressRings" :key="item.label" class="time-ring-item">
+          <div
+            v-for="item in progressRings"
+            :key="item.label"
+            class="time-ring-item"
+          >
             <div class="time-ring-wrap">
               <svg class="time-ring-svg" viewBox="0 0 64 64" aria-hidden="true">
-                <circle class="time-ring-track" cx="32" cy="32" :r="circleRadius" />
+                <circle
+                  class="time-ring-track"
+                  cx="32"
+                  cy="32"
+                  :r="circleRadius"
+                />
                 <circle
                   class="time-ring-progress"
                   cx="32"
@@ -374,7 +417,12 @@ onUnmounted(() => {
               filterUnits="userSpaceOnUse"
               color-interpolation-filters="sRGB"
             >
-              <feDropShadow dx="0" dy="2" stdDeviation="1.8" flood-color="rgba(0,0,0,0.14)" />
+              <feDropShadow
+                dx="0"
+                dy="2"
+                stdDeviation="1.8"
+                flood-color="rgba(0,0,0,0.14)"
+              />
             </filter>
           </defs>
         </svg>
@@ -382,7 +430,10 @@ onUnmounted(() => {
       <div class="countdown-main">
         <p class="countdown-text">今天还剩：{{ progressRings[2].percent }}</p>
         <div class="countdown-bar">
-          <span class="countdown-bar-fill" :style="{ width: progressRings[2].percent }" />
+          <span
+            class="countdown-bar-fill"
+            :style="{ width: progressRings[2].percent }"
+          />
         </div>
       </div>
     </div>
@@ -548,7 +599,11 @@ onUnmounted(() => {
   padding: 14px 18px 16px;
   border-radius: 28px;
   background:
-    radial-gradient(circle at top left, rgba(109, 194, 255, 0.14), transparent 34%),
+    radial-gradient(
+      circle at top left,
+      rgba(109, 194, 255, 0.14),
+      transparent 34%
+    ),
     linear-gradient(180deg, #fffefa 0%, #ffffff 100%);
   isolation: isolate;
 }
@@ -558,8 +613,16 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 80% 20%, rgba(73, 166, 255, 0.12), transparent 26%),
-    linear-gradient(140deg, rgba(255, 255, 255, 0) 0%, rgba(73, 166, 255, 0.08) 100%);
+    radial-gradient(
+      circle at 80% 20%,
+      rgba(73, 166, 255, 0.12),
+      transparent 26%
+    ),
+    linear-gradient(
+      140deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(73, 166, 255, 0.08) 100%
+    );
   opacity: 0;
   transition: opacity 0.45s ease;
   pointer-events: none;
@@ -661,7 +724,14 @@ onUnmounted(() => {
   width: 78%;
   height: 1px;
   margin: 14px auto 18px;
-  background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.18) 12%, rgba(148, 163, 184, 0.42) 50%, rgba(148, 163, 184, 0.18) 88%, transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(148, 163, 184, 0.18) 12%,
+    rgba(148, 163, 184, 0.42) 50%,
+    rgba(148, 163, 184, 0.18) 88%,
+    transparent
+  );
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
@@ -884,8 +954,16 @@ onUnmounted(() => {
 
 :global(html.dark .time-progress-card) {
   background:
-    radial-gradient(circle at top left, rgba(109, 194, 255, 0.08), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0.02) 100%),
+    radial-gradient(
+      circle at top left,
+      rgba(109, 194, 255, 0.08),
+      transparent 34%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.045) 0%,
+      rgba(255, 255, 255, 0.02) 100%
+    ),
     var(--blog-card);
   border-color: var(--blog-border);
   box-shadow:
@@ -903,7 +981,14 @@ onUnmounted(() => {
 }
 
 :global(html.dark .time-progress-divider) {
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1) 12%, rgba(255, 255, 255, 0.22) 50%, rgba(255, 255, 255, 0.1) 88%, transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1) 12%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.1) 88%,
+    transparent
+  );
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
@@ -950,8 +1035,16 @@ onUnmounted(() => {
 :global(html.dark .countdown-card) {
   border: 1px solid var(--blog-border);
   background:
-    radial-gradient(circle at top left, rgba(109, 194, 255, 0.08), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0.02) 100%),
+    radial-gradient(
+      circle at top left,
+      rgba(109, 194, 255, 0.08),
+      transparent 34%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.045) 0%,
+      rgba(255, 255, 255, 0.02) 100%
+    ),
     var(--blog-card);
   box-shadow:
     0 10px 30px rgba(15, 23, 42, 0.12),
@@ -962,7 +1055,11 @@ onUnmounted(() => {
   --hourglass-sand-glow: #ff91a3;
   --countdown-text-color: #e6bd68;
   --countdown-track: rgba(255, 255, 255, 0.1);
-  --countdown-fill: linear-gradient(90deg, rgba(255, 255, 255, 0.92) 0%, rgba(247, 247, 247, 0.88) 100%);
+  --countdown-fill: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(247, 247, 247, 0.88) 100%
+  );
   --countdown-fill-shadow: rgba(0, 0, 0, 0.12);
 }
 

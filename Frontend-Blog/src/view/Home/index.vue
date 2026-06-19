@@ -1,11 +1,5 @@
 <script setup>
-import {
-  defineAsyncComponent,
-  onMounted,
-  onUnmounted,
-  ref,
-  watch
-} from 'vue'
+import { defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getArticlePage, searchArticles } from '@/api/article'
 import ArticleCard from '@/components/ArticleCard.vue'
@@ -91,7 +85,9 @@ onUnmounted(() => {
 
       <div class="article-col">
         <div v-if="searchKeyword" class="search-result-tip">
-          <span>搜索: <strong>{{ searchKeyword }}</strong></span>
+          <span
+            >搜索: <strong>{{ searchKeyword }}</strong></span
+          >
           <span class="search-count">{{ total }} 篇结果</span>
           <a class="clear-search" @click="router.push('/')">&times; 清除</a>
         </div>
@@ -108,7 +104,11 @@ onUnmounted(() => {
         </div>
 
         <template v-else-if="articles.length">
-          <ArticleCard v-for="article in articles" :key="article.id" :article="article" />
+          <ArticleCard
+            v-for="article in articles"
+            :key="article.id"
+            :article="article"
+          />
           <div v-if="total > pageSize" class="pagination-wrap">
             <el-pagination
               :current-page="page"
@@ -136,7 +136,10 @@ onUnmounted(() => {
 
 .home-content {
   display: grid;
-  grid-template-columns: minmax(220px, 240px) minmax(0, 1fr) minmax(248px, 280px);
+  grid-template-columns: minmax(220px, 240px) minmax(0, 1fr) minmax(
+      248px,
+      280px
+    );
   gap: 28px;
   align-items: flex-start;
 }
@@ -236,7 +239,10 @@ onUnmounted(() => {
 
 @media (max-width: 1440px) {
   .home-content {
-    grid-template-columns: minmax(208px, 224px) minmax(0, 1fr) minmax(236px, 264px);
+    grid-template-columns: minmax(208px, 224px) minmax(0, 1fr) minmax(
+        236px,
+        264px
+      );
     gap: 22px;
   }
 }

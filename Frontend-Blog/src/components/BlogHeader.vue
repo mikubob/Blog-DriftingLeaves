@@ -60,11 +60,7 @@ const syncHeaderLayout = () => {
     const themeSwitchEl = themeSwitchRef.value
     const searchAreaEl = searchAreaRef.value
 
-    if (
-      !headerInnerEl ||
-      !headerLeftEl ||
-      !navDesktopEl
-    ) {
+    if (!headerInnerEl || !headerLeftEl || !navDesktopEl) {
       return
     }
 
@@ -251,11 +247,37 @@ onUnmounted(() => {
               rel="noopener"
               class="nav-link"
             >
-              <svg v-if="item.isSvg" class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+              <svg
+                v-if="item.isSvg"
+                class="nav-svg-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"
+                />
+              </svg>
               <i v-else :class="['iconfont', item.icon]" /> {{ item.label }}
             </a>
             <router-link v-else :to="item.to" class="nav-link">
-              <svg v-if="item.isSvg" class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+              <svg
+                v-if="item.isSvg"
+                class="nav-svg-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"
+                />
+              </svg>
               <i v-else :class="['iconfont', item.icon]" /> {{ item.label }}
             </router-link>
           </template>
@@ -342,7 +364,11 @@ onUnmounted(() => {
           <div class="theme-switch__container">
             <div class="theme-switch__clouds"></div>
             <div class="theme-switch__stars-container">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 55" fill="none">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 144 55"
+                fill="none"
+              >
                 <path
                   fill-rule="evenodd"
                   clip-rule="evenodd"
@@ -398,7 +424,20 @@ onUnmounted(() => {
         class="nav-mobile-link"
         @click="navTo(item)"
       >
-        <svg v-if="item.isSvg" class="nav-mobile-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+        <svg
+          v-if="item.isSvg"
+          class="nav-mobile-svg-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"
+          />
+        </svg>
         <i v-else :class="['iconfont', item.icon]" /> {{ item.label }}
       </a>
       <a class="nav-mobile-link" @click="toggleSearch">
@@ -960,13 +999,16 @@ onUnmounted(() => {
 .theme-switch__checkbox:checked
   + .theme-switch__container
   .theme-switch__circle-container {
-  left: calc(100% - var(--circle-container-offset) - var(--circle-container-diameter));
+  left: calc(
+    100% - var(--circle-container-offset) - var(--circle-container-diameter)
+  );
 }
 .theme-switch__checkbox:checked
   + .theme-switch__container
   .theme-switch__circle-container:hover {
   left: calc(
-    100% - var(--circle-container-offset) - var(--circle-container-diameter) - 0.187em
+    100% - var(--circle-container-offset) - var(--circle-container-diameter) -
+      0.187em
   );
 }
 .theme-switch__circle-container:hover {
@@ -975,7 +1017,9 @@ onUnmounted(() => {
 .theme-switch__checkbox:checked + .theme-switch__container .theme-switch__moon {
   transform: translate(0);
 }
-.theme-switch__checkbox:checked + .theme-switch__container .theme-switch__clouds {
+.theme-switch__checkbox:checked
+  + .theme-switch__container
+  .theme-switch__clouds {
   bottom: -4.062em;
 }
 .theme-switch__checkbox:checked
@@ -1171,4 +1215,3 @@ onUnmounted(() => {
   padding: 0 16px;
 }
 </style>
-
