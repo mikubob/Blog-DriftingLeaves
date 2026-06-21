@@ -626,7 +626,19 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Articles> imp
             if (subscribers == null || subscribers.isEmpty()) {
                 return;
             }
-            String articleUrl = websiteProperties.getBlog() + "/article/" + article.getSlug();
+            String blogUrl = websiteProperties.getBlog();
+            if (blogUrl == null || blogUrl.isBlank()) {
+                log.warn("未配置 dl.website.blog，跳过发送新文章通知邮件");
+                return;
+            }
+            blogUrl = blogUrl.trim();
+            if (!blogUrl.startsWith("http://") && !blogUrl.startsWith("https://")) {
+                blogUrl = "https://" + blogUrl;
+            }
+            if (blogUrl.endsWith("/")) {
+                blogUrl = blogUrl.substring(0, blogUrl.length() - 1);
+            }
+            String articleUrl = blogUrl + "/article/" + article.getSlug();
             //2. 发送邮件
             for (RssSubscriptions subscriber : subscribers) {
                 asyncEmailService.sendNewArticleNotificationAsync(
