@@ -31,6 +31,11 @@ const onHtmlChanged = (html) => {
   form.value.contentHtml = html
 }
 
+/* ---- 同步编辑器内容（绕过 composition 阻塞，修复中文标点输入延迟） ---- */
+const onContentChange = (md) => {
+  form.value.contentMarkdown = md
+}
+
 const saving = ref(false)
 const uploadingCover = ref(false)
 const wordCount = computed(() => form.value.contentMarkdown.trim().length)
@@ -389,6 +394,7 @@ onBeforeUnmount(() => {
           @on-upload-img="onUploadImg"
           @on-html-changed="onHtmlChanged"
           @on-remount="initPreviewSyncWatchers"
+          @on-change="onContentChange"
         />
       </div>
 
@@ -585,6 +591,11 @@ onBeforeUnmount(() => {
 }
 .editor-panel :deep(.md-editor-content) {
   font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+}
+
+/* 修复代码块头部 z-index 过高导致穿透 ElMessageBox 弹窗 */
+.editor-panel :deep(.md-editor-code-head) {
+  z-index: 1 !important;
 }
 
 /* 侧边栏 */
