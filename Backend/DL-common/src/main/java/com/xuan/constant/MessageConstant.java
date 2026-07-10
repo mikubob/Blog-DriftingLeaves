@@ -17,6 +17,7 @@ public class MessageConstant {
     public static final String VERIFY_CODE_ERROR = "邮件验证码不正确";
     public static final String VERIFY_CODE_LOCK = "验证码输入错误次数过多，已被锁定，请等待";
     public static final String LOGIN_CREDENTIAL_ERROR = "用户名或密码或验证码错误";
+    public static final String ACCOUNT_LOCKED = "登录失败次数过多，请等待";
     public static final String NOT_LOGIN = "请先登录后再继续操作";
     public static final String NOT_AUTHORIZED = "登录状态已失效，请重新登录";
     public static final String VISITOR_VERIFY_CODE_ERROR = "游客无须邮箱验证码，请输入：";
@@ -34,6 +35,7 @@ public class MessageConstant {
     public static final String COMMENT_NOT_EDIT = "无权编辑此评论，请确认是否为本人提交";
     public static final String COMMENT_NOT_DELETE = "无权删除此评论，请确认是否为本人提交";
     public static final String GUEST_READ_ONLY = "游客账号仅支持查看，无法进行新增、修改或删除操作";
+    public static final String SERVER_MONITOR_ADMIN_ONLY = "服务器信息仅由管理员查看";
     public static final String MESSAGE_NOT_FOUND = "留言不存在或已被删除，请刷新后重试";
     public static final String MESSAGE_NOT_EDIT = "无权编辑此留言，请确认是否为本人提交";
     public static final String MESSAGE_NOT_DELETE = "无权删除此留言，请确认是否为本人提交";

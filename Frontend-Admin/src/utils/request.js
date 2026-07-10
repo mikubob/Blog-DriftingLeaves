@@ -54,6 +54,10 @@ http.interceptors.response.use(
         }, 2000)
       }
     } else if (status === 403) {
+      const backendMsg = error?.response?.data?.msg
+      if (backendMsg) {
+        ElMessage.error(backendMsg)
+      }
       ElMessage.error('权限不足，无法执行该操作')
     } else {
       ElMessage.error('网络错误，请稍后重试')
