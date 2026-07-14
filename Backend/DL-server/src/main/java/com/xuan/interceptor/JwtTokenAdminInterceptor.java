@@ -12,6 +12,7 @@ import com.xuan.properties.JwtProperties;
 import com.xuan.service.TokenService;
 import com.xuan.utils.JwtUtil;
 import io.jsonwebtoken.Claims;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
+
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
 /**
  * jwt令牌校验的拦截器
@@ -46,8 +50,8 @@ public class JwtTokenAdminInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 从请求头中获取令牌
-        String token = request.getHeader(jwtProperties.getTokenName());
+        // 从 Cookie 中获取令牌
+        String token = getTokenFromCookie(request);
 
         // 如果令牌为空，抛出未登录异常
         if(StrUtil.isBlank(token)){
@@ -82,6 +86,24 @@ public class JwtTokenAdminInterceptor implements HandlerInterceptor {
             // 校验失败，抛出未授权异常
             throw new UnauthorizedException(MessageConstant.NOT_AUTHORIZED);
         }
+    }
+
+    /**
+     * 从 Cookie 中读取 Token（自动 URL 解码）
+     * @param request
+     * @return Token 字符串，不存在则返回 null
+     */
+    private String getTokenFromCookie(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        for (Cookie cookie : cookies) {
+            if (jwtProperties.getCookieName().equals(cookie.getName())) {
+                return URLDecoder.decode(cookie.getValue(), StandardCharsets.UTF_8);
+            }
+        }
+        return null;
     }
 
     /**

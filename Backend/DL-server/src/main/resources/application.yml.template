@@ -69,6 +69,8 @@ dl:
     ttl: ${dl.jwt.ttl}
     # 设置前端传递过来的令牌名称
     token-name: Authorization
+    # 设置存储令牌的 Cookie 名称
+    cookie-name: admin_token
   alioss:
     endpoint: ${dl.alioss.endpoint}
     access-key-id: ${dl.alioss.access-key-id}

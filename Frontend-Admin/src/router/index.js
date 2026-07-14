@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useUserStore } from '@/stores/modules/user'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -122,15 +123,15 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  const isLoggedIn = !!localStorage.getItem('admin_token')
+  const userStore = useUserStore()
 
   // 未登录 → 跳登录页（已在登录页则放行）
-  if (!isLoggedIn && to.path !== '/login') {
+  if (!userStore.isLoggedIn && to.path !== '/login') {
     return { path: '/login', replace: true }
   }
 
   // 已登录 → 禁止再访问登录页，直接进首页
-  if (isLoggedIn && to.path === '/login') {
+  if (userStore.isLoggedIn && to.path === '/login') {
     return { path: '/dashboard', replace: true }
   }
 

@@ -14,12 +14,13 @@ export const sendCode = (payload) => http.post('/admin/admin/sendCode', payload)
 
 /**
  * 获取管理员信息
+ * @param {boolean} silent 是否为静默请求（用于启动时恢复登录状态）
  */
-export const getProfile = () => http.get('/admin/admin')
+export const getProfile = (silent = false) => http.get('/admin/admin', { silent })
 
 /**
  * 退出登录
- * @param {{ id: number, token: string }} payload
+ * @param {{ id: number }} payload
  */
 export const logout = (payload) => http.post('/admin/admin/logout', payload)
 

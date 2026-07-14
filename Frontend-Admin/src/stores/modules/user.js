@@ -6,31 +6,29 @@ import router from '@/router'
 export const useUserStore = defineStore(
   'user',
   () => {
-    const token = ref(localStorage.getItem('admin_token') || '')
     const userInfo = ref({})
+    const isLoggedIn = ref(false)
 
-    /** 持久化写入 Token */
-    const setToken = (newToken) => {
-      token.value = newToken
-      localStorage.setItem('admin_token', newToken)
+    /** 设置登录状态 */
+    const setLoginStatus = (status) => {
+      isLoggedIn.value = status
     }
 
     const setUserInfo = (info) => (userInfo.value = info)
 
     /** 清除登录状态 */
     const clearUserInfo = () => {
-      token.value = ''
       userInfo.value = {}
-      localStorage.removeItem('admin_token')
+      isLoggedIn.value = false
     }
 
     /**
-     * 登录动作：调用 API → 存 Token → 拉取用户信息 → 跳转
+     * 登录动作：调用 API → 拉取用户信息 → 跳转
+     * Token 由后端通过 HttpOnly Cookie 下发，前端不再本地存储
      * @param {{ username: string, password: string, code: string }} payload
      */
     const loginAction = async (payload) => {
       const res = await login(payload)
-      setToken(res.data.token)
       setUserInfo({ id: res.data.id })
       try {
         await fetchUserInfo()
@@ -40,18 +38,21 @@ export const useUserStore = defineStore(
       router.push('/dashboard')
     }
 
-    /** 拉取当前管理员信息 */
-    const fetchUserInfo = async () => {
-      if (!token.value) return
-      const res = await getProfile()
+    /**
+     * 拉取当前管理员信息
+     * @param {boolean} silent 是否为静默请求（用于启动时恢复登录状态）
+     */
+    const fetchUserInfo = async (silent = false) => {
+      const res = await getProfile(silent)
       userInfo.value = res.data || {}
+      isLoggedIn.value = true
     }
 
     /** 退出登录 */
     const logoutAction = async () => {
       try {
         if (userInfo.value?.id) {
-          await logout({ id: userInfo.value.id, token: token.value })
+          await logout({ id: userInfo.value.id })
         }
       } finally {
         clearUserInfo()
@@ -60,20 +61,15 @@ export const useUserStore = defineStore(
       }
     }
 
-    /** 是否已登录（供路由守卫调用） */
-    const isLoggedIn = () => !!token.value
-
     return {
-      token,
       userInfo,
       isLoggedIn,
-      setToken,
+      setLoginStatus,
       setUserInfo,
       clearUserInfo,
       loginAction,
       fetchUserInfo,
       logoutAction
     }
-  },
-  { persist: true }
+  }
 )

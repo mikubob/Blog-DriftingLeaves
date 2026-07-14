@@ -5,49 +5,42 @@ const baseURL = '/api'
 
 /**
  * Axios 实例
+ * 启用 withCredentials，让浏览器自动携带后端下发的 Cookie（含 HttpOnly Token）
  */
 const http = axios.create({
   baseURL,
-  timeout: 300000
+  timeout: 300000,
+  withCredentials: true
 })
 
-/**
- * 读取本地 Token
- * @returns {string}
- */
-const getToken = () => {
-  return localStorage.getItem('admin_token') || ''
-}
-
 http.interceptors.request.use(
-  (config) => {
-    const token = getToken()
-    if (token) {
-      config.headers = config.headers || {}
-      config.headers['Authorization'] = token
-    }
-    return config
-  },
+  (config) => config,
   (error) => Promise.reject(error)
 )
 
 http.interceptors.response.use(
   (response) => {
-    const { data } = response
+    const { data, config } = response
     if (data?.code === 1) {
       return data
     }
-    ElMessage.error(data?.msg || '请求失败')
+    if (!config?.silent) {
+      ElMessage.error(data?.msg || '请求失败')
+    }
     return Promise.reject(data)
   },
   (error) => {
     const status = error?.response?.status
+    const silent = error?.config?.silent
     if (status === 401) {
+      // 静默模式下不提示、不跳转
+      if (silent) {
+        return Promise.reject(error)
+      }
       // 防止多个并发请求同时 401 弹出多个提示
       if (!http._isRedirecting401) {
         http._isRedirecting401 = true
         ElMessage.warning('登录状态失效，请重新登录')
-        localStorage.removeItem('admin_token')
         router.push('/login')
         setTimeout(() => {
           http._isRedirecting401 = false
