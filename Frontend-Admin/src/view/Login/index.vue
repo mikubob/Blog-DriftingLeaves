@@ -19,9 +19,20 @@ const loginForm = reactive({
 })
 
 const rules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-  code: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { min: 3, max: 20, message: '用户名长度应在 3-20 个字符之间', trigger: 'blur' },
+    { pattern: /^[a-zA-Z0-9_]+$/, message: '用户名只能包含字母、数字和下划线', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, max: 32, message: '密码长度应在 6-32 个字符之间', trigger: 'blur' },
+    { pattern: /^[a-zA-Z0-9_]+$/, message: '密码只能包含字母、数字和下划线', trigger: 'blur' }
+  ],
+  code: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { pattern: /^\d{6}$/, message: '验证码必须为 6 位数字', trigger: 'blur' }
+  ]
 }
 
 const codeButtonText = computed(() =>
@@ -42,10 +53,11 @@ const startCountdown = () => {
 }
 
 const onSendCode = async () => {
-  if (!loginForm.username.trim()) {
-    ElMessage.warning('请先输入用户名')
-    return
-  }
+  if (!loginFormRef.value) return
+  const valid = await loginFormRef.value
+    .validateField('username')
+    .catch(() => false)
+  if (!valid) return
   sending.value = true
   try {
     await sendCode({ username: loginForm.username })
