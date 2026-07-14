@@ -30,11 +30,7 @@ export const useUserStore = defineStore(
     const loginAction = async (payload) => {
       const res = await login(payload)
       setUserInfo({ id: res.data.id })
-      try {
-        await fetchUserInfo()
-      } catch {
-        // 个人信息获取失败不影响登录跳转
-      }
+      await fetchUserInfo()
       router.push('/dashboard')
     }
 
