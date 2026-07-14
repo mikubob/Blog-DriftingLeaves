@@ -1,8 +1,16 @@
 <script setup>
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
+
+const desc = ref('你的访问已被限制，如有疑问请联系站长')
 
 onMounted(() => {
   document.title = '403 - 访问受限'
+  // 从 sessionStorage 获取后端返回的错误消息
+  const backendMsg = sessionStorage.getItem('403_msg')
+  if (backendMsg) {
+    desc.value = backendMsg
+    sessionStorage.removeItem('403_msg')
+  }
 })
 </script>
 
@@ -11,7 +19,7 @@ onMounted(() => {
     <div class="error-content">
       <h1 class="error-code">403</h1>
       <p class="error-title">访问受限</p>
-      <p class="error-desc">你的访问已被限制，如有疑问请联系站长</p>
+      <p class="error-desc">{{ desc }}</p>
     </div>
   </div>
 </template>

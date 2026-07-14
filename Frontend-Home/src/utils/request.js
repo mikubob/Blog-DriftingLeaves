@@ -25,6 +25,11 @@ instance.interceptors.response.use(
   (err) => {
     console.log(err)
     if (err?.response?.status === 403) {
+      // 将后端返回的错误消息存入 sessionStorage，供 403 页面展示
+      const backendMsg = err?.response?.data?.msg
+      if (backendMsg) {
+        sessionStorage.setItem('403_msg', backendMsg)
+      }
       router.replace('/403')
     }
     return Promise.reject(err)
