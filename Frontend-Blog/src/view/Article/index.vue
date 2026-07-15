@@ -19,6 +19,12 @@ import {
 } from '@/api/comment'
 import { likeArticle, unlikeArticle, hasLiked } from '@/api/like'
 import { generateCaptcha } from '@/api/captcha'
+import {
+  isValidNickname,
+  isValidContent,
+  isValidEmailOrQq,
+  isValidCaptcha
+} from '@/utils/formValidate'
 import TableOfContents from '@/components/TableOfContents.vue'
 import EmojiPicker from '@/components/EmojiPicker.vue'
 import { MdPreview } from 'md-editor-v3'
@@ -60,6 +66,18 @@ const commentForm = ref({
   isNotice: true,
   isMarkdown: true
 })
+
+// 各字段校验错误信息
+const errors = ref({
+  nickname: '',
+  emailOrQq: '',
+  content: '',
+  captcha: ''
+})
+
+// 内容实时字数
+const contentLength = computed(() => commentForm.value.content?.length ?? 0)
+
 const replyTarget = ref(null)
 const submitting = ref(false)
 const editingId = ref(null)
@@ -92,6 +110,8 @@ const loadCaptcha = async () => {
   try {
     const res = await generateCaptcha()
     captcha.value = res.data.data
+    // 刷新验证码后清空之前的验证码错误提示
+    errors.value.captcha = ''
   } catch {
     /* ignore */
   }
@@ -182,20 +202,45 @@ const toggleLike = async () => {
 }
 
 /* 评论操作 */
+
+// 单个字段失焦/即时校验
+const validateField = (field) => {
+  let result
+  switch (field) {
+    case 'nickname': {
+      // 允许使用本地访客缓存的昵称作为兜底
+      const nick = commentForm.value.nickname.trim() || visitorStore.nickname
+      result = isValidNickname(nick)
+      break
+    }
+    case 'content':
+      result = isValidContent(commentForm.value.content)
+      break
+    case 'emailOrQq':
+      result = isValidEmailOrQq(commentForm.value.emailOrQq)
+      break
+    case 'captcha':
+      result = isValidCaptcha(commentForm.value.captchaAnswer, captcha.value.result)
+      break
+  }
+  errors.value[field] = result.valid ? '' : result.msg
+  return result.valid
+}
+
+// 提交前全量校验
+const validateForm = () => {
+  const fields = ['content', 'nickname', 'emailOrQq', 'captcha']
+  const valid = fields.map(validateField).every(Boolean)
+  if (!valid) {
+    ElMessage.warning('请检查表单填写是否正确')
+  }
+  return valid
+}
+
 const handleSubmitComment = async () => {
+  if (!validateForm()) return
   const nick = commentForm.value.nickname.trim() || visitorStore.nickname
   const content = commentForm.value.content.trim()
-  if (!nick || !content) {
-    ElMessage.warning('请填写昵称和内容')
-    return
-  }
-  // 验证码校验
-  const answer = parseInt(commentForm.value.captchaAnswer, 10)
-  if (isNaN(answer) || answer !== captcha.value.result) {
-    ElMessage.warning('验证码错误，请重新计算')
-    loadCaptcha()
-    return
-  }
   submitting.value = true
   try {
     const payload = {
@@ -224,6 +269,8 @@ const handleSubmitComment = async () => {
       isNotice: true,
       isMarkdown: true
     }
+    // 提交成功后清空校验提示
+    errors.value = { nickname: '', emailOrQq: '', content: '', captcha: '' }
     replyTarget.value = null
     ElMessage.success('评论成功，审核通过后将展示')
     loadComments()
@@ -237,9 +284,13 @@ const startReply = (c) => {
   replyTarget.value = c
   commentForm.value.nickname = visitorStore.nickname
   commentForm.value.emailOrQq = visitorStore.email
+  // 切换回复目标时清空历史校验提示
+  errors.value = { nickname: '', emailOrQq: '', content: '', captcha: '' }
 }
 const cancelReply = () => {
   replyTarget.value = null
+  // 取消回复时清空校验提示
+  errors.value = { nickname: '', emailOrQq: '', content: '', captcha: '' }
 }
 
 const startEdit = (c) => {
@@ -536,55 +587,76 @@ onUnmounted(() => {
                 回复 <strong>{{ replyTarget.nickname }}</strong>
                 <a class="cancel-reply" @click="cancelReply">&times;</a>
               </div>
-              <textarea
-                ref="commentTextareaRef"
-                v-model="commentForm.content"
-                placeholder="写下你的想法..."
-                class="form-textarea"
-                rows="4"
-              />
-              <div class="form-row">
-                <div class="input-with-icon">
-                  <i class="iconfont icon-user input-icon" />
-                  <input
-                    v-model="commentForm.nickname"
-                    placeholder="昵称 *"
-                    class="form-input"
-                  />
-                </div>
-                <div class="input-with-icon">
-                  <i class="iconfont icon-youxiang input-icon" />
-                  <input
-                    v-model="commentForm.emailOrQq"
-                    placeholder="邮箱/QQ号"
-                    class="form-input"
-                  />
-                </div>
+              <div class="textarea-wrap">
+                <textarea
+                  ref="commentTextareaRef"
+                  v-model="commentForm.content"
+                  placeholder="写下你的想法..."
+                  :class="['form-textarea', { 'form-textarea-error': errors.content }]"
+                  rows="4"
+                  @blur="validateField('content')"
+                />
+                <p v-if="errors.content" class="error-text">{{ errors.content }}</p>
                 <div
-                  class="input-with-icon captcha-wrap"
-                  @mouseenter="captchaHover = true"
-                  @mouseleave="captchaHover = false"
+                  class="char-counter-line"
+                  :class="{ 'over-limit': contentLength > 2000 }"
                 >
-                  <i class="iconfont icon-lock input-icon" />
-                  <input
-                    v-model="commentForm.captchaAnswer"
-                    placeholder="验证码"
-                    class="form-input"
-                    @focus="captchaFocus = true"
-                    @blur="captchaFocus = false"
-                  />
-                  <span
-                    v-show="(captchaHover || captchaFocus) && captcha.question"
-                    class="captcha-tip"
+                  {{ contentLength }}/2000
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-field">
+                  <div class="input-with-icon">
+                    <i class="iconfont icon-user input-icon" />
+                    <input
+                      v-model="commentForm.nickname"
+                      placeholder="昵称 *"
+                      :class="['form-input', { 'form-input-error': errors.nickname }]"
+                      @blur="validateField('nickname')"
+                    />
+                  </div>
+                  <p v-if="errors.nickname" class="error-text">{{ errors.nickname }}</p>
+                </div>
+                <div class="form-field">
+                  <div class="input-with-icon">
+                    <i class="iconfont icon-youxiang input-icon" />
+                    <input
+                      v-model="commentForm.emailOrQq"
+                      placeholder="邮箱/QQ号"
+                      :class="['form-input', { 'form-input-error': errors.emailOrQq }]"
+                      @blur="validateField('emailOrQq')"
+                    />
+                  </div>
+                  <p v-if="errors.emailOrQq" class="error-text">{{ errors.emailOrQq }}</p>
+                </div>
+                <div class="form-field">
+                  <div
+                    class="input-with-icon captcha-wrap"
+                    @mouseenter="captchaHover = true"
+                    @mouseleave="captchaHover = false"
                   >
-                    {{ captcha.question }}
-                  </span>
-                  <span
-                    class="captcha-refresh"
-                    @click="loadCaptcha"
-                    title="换一题"
-                    >↻</span
-                  >
+                    <i class="iconfont icon-lock input-icon" />
+                    <input
+                      v-model="commentForm.captchaAnswer"
+                      placeholder="验证码"
+                      :class="['form-input', { 'form-input-error': errors.captcha }]"
+                      @focus="captchaFocus = true"
+                      @blur="() => { captchaFocus = false; validateField('captcha') }"
+                    />
+                    <span
+                      v-show="(captchaHover || captchaFocus) && captcha.question"
+                      class="captcha-tip"
+                    >
+                      {{ captcha.question }}
+                    </span>
+                    <span
+                      class="captcha-refresh"
+                      @click="loadCaptcha"
+                      title="换一题"
+                      >↻</span
+                    >
+                  </div>
+                  <p v-if="errors.captcha" class="error-text">{{ errors.captcha }}</p>
                 </div>
               </div>
               <div class="form-options">
@@ -1276,9 +1348,15 @@ onUnmounted(() => {
   display: flex;
   gap: 8px;
   margin-bottom: 8px;
+  align-items: flex-start;
+}
+.form-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 .input-with-icon {
-  flex: 1;
   position: relative;
   display: flex;
   align-items: center;
@@ -1340,6 +1418,13 @@ onUnmounted(() => {
 .form-input:focus {
   border-color: #303133;
 }
+.form-input-error,
+.form-input-error:focus {
+  border-color: #f56c6c;
+}
+.textarea-wrap {
+  margin-bottom: 8px;
+}
 .form-textarea {
   width: 100%;
   border: 1px solid #e4e7ed;
@@ -1349,12 +1434,30 @@ onUnmounted(() => {
   resize: vertical;
   outline: none;
   font-family: inherit;
-  margin-bottom: 8px;
   box-sizing: border-box;
   background: #fff;
 }
 .form-textarea:focus {
   border-color: #303133;
+}
+.form-textarea-error,
+.form-textarea-error:focus {
+  border-color: #f56c6c;
+}
+.error-text {
+  color: #f56c6c;
+  font-size: 12px;
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+.char-counter-line {
+  text-align: right;
+  font-size: 12px;
+  color: #c0c4cc;
+  margin-top: 4px;
+}
+.char-counter-line.over-limit {
+  color: #f56c6c;
 }
 .form-options {
   display: flex;
@@ -1670,6 +1773,7 @@ onUnmounted(() => {
   }
   .form-row {
     flex-direction: column;
+    align-items: stretch;
   }
 }
 </style>

@@ -7,6 +7,12 @@ import {
   deleteMessage
 } from '@/api/message'
 import { generateCaptcha } from '@/api/captcha'
+import {
+  isValidNickname,
+  isValidContent,
+  isValidEmailOrQq,
+  isValidCaptcha
+} from '@/utils/formValidate'
 import { useVisitorStore, useBlogStore } from '@/stores'
 import SidebarCard from '@/components/SidebarCard.vue'
 import EmojiPicker from '@/components/EmojiPicker.vue'
@@ -27,6 +33,18 @@ const form = ref({
   isNotice: true,
   isMarkdown: true
 })
+
+// 各字段校验错误信息
+const errors = ref({
+  nickname: '',
+  emailOrQq: '',
+  content: '',
+  captcha: ''
+})
+
+// 内容实时字数
+const contentLength = computed(() => form.value.content?.length ?? 0)
+
 const replyTarget = ref(null)
 const editTarget = ref(null)
 const submitting = ref(false)
@@ -58,6 +76,8 @@ const loadCaptcha = async () => {
   try {
     const res = await generateCaptcha()
     captcha.value = res.data.data
+    // 刷新验证码后清空之前的验证码错误提示
+    errors.value.captcha = ''
   } catch {
     /* ignore */
   }
@@ -75,18 +95,43 @@ const load = async () => {
   }
 }
 
-const handleSubmit = async () => {
-  if (!form.value.nickname.trim()) return ElMessage.warning('请输入昵称')
-  if (!form.value.content.trim()) return ElMessage.warning('请输入内容')
-  // 新留言需要验证码
-  if (!editTarget.value) {
-    const answer = parseInt(form.value.captchaAnswer, 10)
-    if (isNaN(answer) || answer !== captcha.value.result) {
-      ElMessage.warning('验证码错误，请重新计算')
-      loadCaptcha()
-      return
-    }
+// 单个字段失焦/即时校验
+const validateField = (field) => {
+  let result
+  switch (field) {
+    case 'nickname':
+      result = isValidNickname(form.value.nickname)
+      break
+    case 'content':
+      result = isValidContent(form.value.content)
+      break
+    case 'emailOrQq':
+      result = isValidEmailOrQq(form.value.emailOrQq)
+      break
+    case 'captcha':
+      result = isValidCaptcha(form.value.captchaAnswer, captcha.value.result)
+      break
   }
+  errors.value[field] = result.valid ? '' : result.msg
+  return result.valid
+}
+
+// 提交前全量校验
+const validateForm = () => {
+  const fields = ['content', 'nickname', 'emailOrQq']
+  // 新留言才需要校验验证码
+  if (!editTarget.value) {
+    fields.push('captcha')
+  }
+  const valid = fields.map(validateField).every(Boolean)
+  if (!valid) {
+    ElMessage.warning('请检查表单填写是否正确')
+  }
+  return valid
+}
+
+const handleSubmit = async () => {
+  if (!validateForm()) return
   submitting.value = true
   try {
     if (editTarget.value) {
@@ -145,6 +190,8 @@ const startReply = (msg) => {
   editTarget.value = null
   replyTarget.value = msg
   form.value.content = ''
+  // 切换回复目标时清空历史校验提示
+  errors.value = { nickname: '', emailOrQq: '', content: '', captcha: '' }
   document.querySelector('.msg-form')?.scrollIntoView({ behavior: 'smooth' })
 }
 
@@ -154,6 +201,8 @@ const startEdit = (msg) => {
   form.value.content =
     msg.content ?? (msg.contentHtml?.replace(/<[^>]+>/g, '') || '')
   form.value.isMarkdown = msg.isMarkdown === 1
+  // 切换编辑时清空历史校验提示
+  errors.value = { nickname: '', emailOrQq: '', content: '', captcha: '' }
   document.querySelector('.msg-form')?.scrollIntoView({ behavior: 'smooth' })
 }
 
@@ -165,6 +214,8 @@ const resetForm = () => {
   form.value.isSecret = false
   form.value.isNotice = true
   form.value.isMarkdown = true
+  // 清空所有校验错误
+  errors.value = { nickname: '', emailOrQq: '', content: '', captcha: '' }
 }
 
 const isMine = (msg) =>
@@ -233,57 +284,80 @@ onMounted(() => {
             <span class="cancel" @click="resetForm">&times;</span>
           </div>
 
-          <textarea
-            ref="msgTextareaRef"
-            v-model="form.content"
-            class="form-textarea"
-            placeholder="写点什么..."
-            rows="4"
-          />
-          <div class="form-row">
-            <div class="input-with-icon">
-              <i class="iconfont icon-user input-icon" />
-              <input
-                v-model="form.nickname"
-                type="text"
-                placeholder="昵称 *"
-                class="form-input"
-                :disabled="!!editTarget"
-              />
-            </div>
-            <div class="input-with-icon">
-              <i class="iconfont icon-youxiang input-icon" />
-              <input
-                v-model="form.emailOrQq"
-                type="text"
-                placeholder="邮箱/QQ号"
-                class="form-input"
-                :disabled="!!editTarget"
-              />
-            </div>
+          <div class="textarea-wrap">
+            <textarea
+              ref="msgTextareaRef"
+              v-model="form.content"
+              :class="['form-textarea', { 'form-textarea-error': errors.content }]"
+              placeholder="写点什么..."
+              rows="4"
+              @blur="validateField('content')"
+            />
+            <p v-if="errors.content" class="error-text">{{ errors.content }}</p>
             <div
-              v-if="!editTarget"
-              class="input-with-icon captcha-wrap"
-              @mouseenter="captchaHover = true"
-              @mouseleave="captchaHover = false"
+              class="char-counter-line"
+              :class="{ 'over-limit': contentLength > 2000 }"
             >
-              <i class="iconfont icon-lock input-icon" />
-              <input
-                v-model="form.captchaAnswer"
-                placeholder="验证码"
-                class="form-input"
-                @focus="captchaFocus = true"
-                @blur="captchaFocus = false"
-              />
-              <span
-                v-show="(captchaHover || captchaFocus) && captcha.question"
-                class="captcha-tip"
+              {{ contentLength }}/2000
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <div class="input-with-icon">
+                <i class="iconfont icon-user input-icon" />
+                <input
+                  v-model="form.nickname"
+                  type="text"
+                  placeholder="昵称 *"
+                  :class="['form-input', { 'form-input-error': errors.nickname }]"
+                  :disabled="!!editTarget"
+                  @blur="validateField('nickname')"
+                />
+              </div>
+              <p v-if="errors.nickname" class="error-text">{{ errors.nickname }}</p>
+            </div>
+            <div class="form-field">
+              <div class="input-with-icon">
+                <i class="iconfont icon-youxiang input-icon" />
+                <input
+                  v-model="form.emailOrQq"
+                  type="text"
+                  placeholder="邮箱/QQ号"
+                  :class="['form-input', { 'form-input-error': errors.emailOrQq }]"
+                  :disabled="!!editTarget"
+                  @blur="validateField('emailOrQq')"
+                />
+              </div>
+              <p v-if="errors.emailOrQq" class="error-text">{{ errors.emailOrQq }}</p>
+            </div>
+            <div v-if="!editTarget" class="form-field">
+              <div
+                class="input-with-icon captcha-wrap"
+                @mouseenter="captchaHover = true"
+                @mouseleave="captchaHover = false"
               >
-                {{ captcha.question }}
-              </span>
-              <span class="captcha-refresh" @click="loadCaptcha" title="换一题"
-                >↻</span
-              >
+                <i class="iconfont icon-lock input-icon" />
+                <input
+                  v-model="form.captchaAnswer"
+                  placeholder="验证码"
+                  :class="['form-input', { 'form-input-error': errors.captcha }]"
+                  @focus="captchaFocus = true"
+                  @blur="() => { captchaFocus = false; validateField('captcha') }"
+                />
+                <span
+                  v-show="(captchaHover || captchaFocus) && captcha.question"
+                  class="captcha-tip"
+                >
+                  {{ captcha.question }}
+                </span>
+                <span
+                  class="captcha-refresh"
+                  @click="loadCaptcha"
+                  title="换一题"
+                  >↻</span
+                >
+              </div>
+              <p v-if="errors.captcha" class="error-text">{{ errors.captcha }}</p>
             </div>
           </div>
           <div class="form-options">
@@ -582,9 +656,15 @@ onMounted(() => {
   display: flex;
   gap: 8px;
   margin-bottom: 8px;
+  align-items: flex-start;
+}
+.form-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 .input-with-icon {
-  flex: 1;
   position: relative;
   display: flex;
   align-items: center;
@@ -646,6 +726,9 @@ onMounted(() => {
 .form-input:focus {
   border-color: #303133;
 }
+.textarea-wrap {
+  margin-bottom: 8px;
+}
 .form-textarea {
   width: 100%;
   padding: 10px 12px;
@@ -657,10 +740,32 @@ onMounted(() => {
   font-family: inherit;
   background: #fff;
   box-sizing: border-box;
-  margin-bottom: 8px;
 }
 .form-textarea:focus {
   border-color: #303133;
+}
+.form-textarea-error,
+.form-textarea-error:focus {
+  border-color: #f56c6c;
+}
+.error-text {
+  color: #f56c6c;
+  font-size: 12px;
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+.char-counter-line {
+  text-align: right;
+  font-size: 12px;
+  color: #c0c4cc;
+  margin-top: 4px;
+}
+.char-counter-line.over-limit {
+  color: #f56c6c;
+}
+.form-input-error,
+.form-input-error:focus {
+  border-color: #f56c6c;
 }
 .form-options {
   display: flex;
@@ -978,6 +1083,7 @@ onMounted(() => {
   }
   .form-row {
     flex-direction: column;
+    align-items: stretch;
   }
   .msg-meta-item {
     display: none;
