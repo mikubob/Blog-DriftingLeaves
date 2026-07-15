@@ -636,3 +636,181 @@ html.dark .toc-wrap .toc-item.active::before,
     width: 92vw !important;
   }
 }
+
+/* === 暗色模式 — 关键组件可见性统一修复 === */
+
+/* 1. Element Plus 主色按钮：确认弹窗“确定”等 */
+html.dark .el-button--primary {
+  --el-button-text-color: #181818;
+  --el-button-hover-text-color: #181818;
+  --el-button-active-text-color: #181818;
+}
+
+/* 2. 表单提交按钮：发表评论 / 留言 */
+html.dark .form-submit,
+html.dark .btn-submit {
+  background: #e5e5e5 !important;
+  color: #181818 !important;
+}
+html.dark .form-submit:hover,
+html.dark .btn-submit:hover {
+  background: #ffffff !important;
+}
+
+/* 3. 区块标题与相关文章 */
+html.dark .section-title,
+html.dark .form-title {
+  color: #ffffff !important;
+}
+html.dark .related-list a {
+  color: #ffffff !important;
+}
+html.dark .related-list a:hover {
+  color: #ffffff !important;
+  opacity: 0.85;
+}
+html.dark .related-list li {
+  border-bottom-color: var(--blog-border) !important;
+}
+
+/* 4. 评论/留言元信息、操作链接 */
+html.dark .c-nick,
+html.dark .msg-nick {
+  color: var(--blog-text) !important;
+}
+html.dark .c-reply-to,
+html.dark .reply-to,
+html.dark .c-actions a,
+html.dark .msg-actions .act,
+html.dark .c-date,
+html.dark .msg-date,
+html.dark .c-meta-item,
+html.dark .msg-meta-item,
+html.dark .msg-count,
+html.dark .char-counter-line,
+html.dark .input-icon {
+  color: var(--blog-text2) !important;
+}
+html.dark .c-actions a:hover,
+html.dark .msg-actions .act:hover {
+  color: #ffffff !important;
+}
+html.dark .msg-actions .act.del:hover,
+html.dark .c-actions a.danger:hover {
+  color: #ff6b6b !important;
+}
+
+/* 5. 表单选项与占位符 */
+html.dark .option-check {
+  color: var(--blog-text) !important;
+}
+html.dark .option-check input[type='checkbox'] {
+  accent-color: var(--blog-text);
+}
+html.dark .form-input::placeholder,
+html.dark .form-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* 6. 徽章、提示、验证码 */
+html.dark .c-badge,
+html.dark .badge-admin {
+  background: var(--blog-text) !important;
+  color: var(--blog-bg) !important;
+}
+html.dark .c-pending,
+html.dark .msg-pending {
+  color: #e6a23c !important;
+  background: #3a2e1a !important;
+}
+html.dark .reply-hint,
+html.dark .reply-tip {
+  background: var(--blog-hover) !important;
+  color: var(--blog-text) !important;
+  border-color: var(--blog-border) !important;
+}
+html.dark .captcha-refresh:hover {
+  color: #ffffff !important;
+}
+html.dark .captcha-tip {
+  background: var(--blog-card) !important;
+  color: var(--blog-text) !important;
+  border-color: var(--blog-border) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 7. 评论/留言内容（Markdown 渲染后的 HTML）暗色适配 */
+html.dark .c-body,
+html.dark .msg-body {
+  color: var(--blog-text) !important;
+}
+html.dark .c-body h1,
+html.dark .c-body h2,
+html.dark .c-body h3,
+html.dark .c-body h4,
+html.dark .msg-body h1,
+html.dark .msg-body h2,
+html.dark .msg-body h3,
+html.dark .msg-body h4 {
+  color: #ffffff !important;
+}
+html.dark .c-body p,
+html.dark .msg-body p {
+  color: var(--blog-text) !important;
+}
+html.dark .c-body code,
+html.dark .msg-body code {
+  background: #333333 !important;
+  color: #e5e5e5 !important;
+}
+html.dark .c-body pre,
+html.dark .msg-body pre {
+  background: #1e1e1e !important;
+  color: #d4d4d4 !important;
+}
+html.dark .c-body pre code,
+html.dark .msg-body pre code {
+  background: transparent !important;
+  color: inherit !important;
+}
+html.dark .c-body blockquote,
+html.dark .msg-body blockquote {
+  background: #2a2a2a !important;
+  border-left-color: #555555 !important;
+  color: var(--blog-text2) !important;
+}
+html.dark .c-body a,
+html.dark .msg-body a {
+  color: #7ec1ff !important;
+}
+html.dark .c-body a:hover,
+html.dark .msg-body a:hover {
+  color: #a8d6ff !important;
+}
+html.dark .c-body table th,
+html.dark .msg-body table th {
+  background: #2a2a2a !important;
+  color: var(--blog-text) !important;
+}
+html.dark .c-body table td,
+html.dark .msg-body table td {
+  border-color: var(--blog-border) !important;
+  color: var(--blog-text2) !important;
+}
+
+/* 8. 头像与嵌套分割线 */
+html.dark .c-avatar-letter,
+html.dark .msg-avatar-letter {
+  background: var(--blog-hover) !important;
+  color: var(--blog-text) !important;
+}
+html.dark .c-avatar-img,
+html.dark .msg-avatar-img {
+  border-color: var(--blog-border) !important;
+}
+html.dark .comment-children {
+  border-left-color: var(--blog-border) !important;
+}
+html.dark .comment-item.child {
+  border-bottom-color: var(--blog-border) !important;
+}
