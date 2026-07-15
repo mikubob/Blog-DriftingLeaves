@@ -27,10 +27,10 @@ export const isValidEmailOrQq = (value) => {
     return { valid: false, msg: `邮箱/QQ号不能超过 ${EMAIL_OR_QQ_MAX_LENGTH} 字` }
   }
 
-  // QQ 号：5-11 位纯数字
-  const qqReg = /^\d{5,11}$/
-  // 邮箱：基础邮箱格式
-  const emailReg = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  // QQ 号：5-12 位数字，首位非 0
+  const qqReg = /^[1-9]\d{4,11}$/
+  // 邮箱：统一邮箱格式
+  const emailReg = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
 
   if (qqReg.test(trimmed) || emailReg.test(trimmed)) {
     return { valid: true, msg: '' }

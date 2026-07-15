@@ -251,7 +251,7 @@ const handleSubmitComment = async () => {
       content: content,
       nickname: nick,
       visitorId: visitorStore.visitorId,
-      emailOrQq: commentForm.value.emailOrQq || visitorStore.email || '',
+      emailOrQq: commentForm.value.emailOrQq || '',
       isMarkdown: commentForm.value.isMarkdown ? 1 : 0,
       isSecret: commentForm.value.isSecret ? 1 : 0,
       isNotice: commentForm.value.isNotice ? 1 : 0
