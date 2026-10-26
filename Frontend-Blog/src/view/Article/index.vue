@@ -29,6 +29,8 @@ import TableOfContents from '@/components/TableOfContents.vue'
 import EmojiPicker from '@/components/EmojiPicker.vue'
 import { MdPreview } from 'md-editor-v3'
 import 'md-editor-v3/lib/preview.css'
+import { MarkdownHeadingIds } from '@/utils/markdownAnchors'
+import { useArticleAnchors } from '@/composables/useArticleAnchors'
 
 const route = useRoute()
 const visitorStore = useVisitorStore()
@@ -52,6 +54,9 @@ const liked = ref(false)
 const liking = ref(false)
 const readingProgress = ref(0)
 const articleContentRef = ref(null)
+const headingIds = new MarkdownHeadingIds()
+const { onContentRendered, onAnchorClick } =
+  useArticleAnchors(articleContentRef)
 
 let readingProgressFrame = 0
 
@@ -159,6 +164,7 @@ const loadArticle = async (slug) => {
     article.value = null
   } finally {
     loading.value = false
+    onContentRendered()
     nextTick(updateReadingProgress)
   }
 }
@@ -481,11 +487,17 @@ onUnmounted(() => {
             </div>
 
             <!-- 正文 -->
-            <div ref="articleContentRef" class="article-content">
+            <div
+              ref="articleContentRef"
+              class="article-content"
+              @click.capture="onAnchorClick"
+            >
               <MdPreview
                 v-if="hasMarkdown"
                 editorId="blog-article-preview"
                 :modelValue="article.contentMarkdown"
+                :md-heading-id="headingIds.getId"
+                @on-html-changed="onContentRendered"
                 previewTheme="github"
                 :theme="previewTheme"
                 codeTheme="atom"
@@ -1076,6 +1088,15 @@ onUnmounted(() => {
 
 .article-content {
   word-break: break-word;
+}
+
+.article-content :deep(h1),
+.article-content :deep(h2),
+.article-content :deep(h3),
+.article-content :deep(h4),
+.article-content :deep(h5),
+.article-content :deep(h6) {
+  scroll-margin-top: 90px;
 }
 
 .article-content :deep(.md-editor) {

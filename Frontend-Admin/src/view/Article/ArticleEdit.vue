@@ -6,6 +6,12 @@ import { uploadFile } from '@/api/settings'
 import { MdEditor } from 'md-editor-v3'
 import EmojiPicker from '@/components/EmojiPicker.vue'
 import 'md-editor-v3/lib/style.css'
+import {
+  MarkdownHeadingIds,
+  handlePreviewAnchorClick
+} from '@/utils/markdownAnchors'
+
+const headingIds = new MarkdownHeadingIds()
 
 const route = useRoute()
 const router = useRouter()
@@ -390,7 +396,9 @@ onBeforeUnmount(() => {
           v-model="form.contentMarkdown"
           preview-theme="github"
           :toolbars-exclude="['mermaid', 'katex', 'github']"
+          :md-heading-id="headingIds.getId"
           class="md-editor-fill"
+          @click.capture="handlePreviewAnchorClick"
           @on-upload-img="onUploadImg"
           @on-html-changed="onHtmlChanged"
           @on-remount="initPreviewSyncWatchers"

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useThemeStore } from '@/stores'
+import { ensureHeadingIds } from '@/utils/markdownAnchors'
 
 const props = defineProps({
   contentHtml: { type: String, default: '' },
@@ -94,12 +95,13 @@ const extractHeadings = () => {
       return
     }
 
-    const nodes = el.querySelectorAll('h1, h2, h3, h4')
+    ensureHeadingIds(el)
+    const nodes = el.querySelectorAll('h1, h2, h3, h4, h5, h6')
     const list = []
 
-    nodes.forEach((node, idx) => {
+    nodes.forEach((node) => {
       const text = node.textContent.trim()
-      const tocId = `toc-heading-${idx + 1}`
+      const tocId = node.id
 
       node.style.scrollMarginTop = `${getHeaderOffset()}px`
       list.push({
