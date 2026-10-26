@@ -21,9 +21,6 @@ const scopeLabel = computed(() =>
 const metricLabel = computed(() =>
   activeMetric.value === 'view' ? '浏览量' : '点赞量'
 )
-const metricIcon = computed(() =>
-  activeMetric.value === 'view' ? 'icon-eye' : 'icon-dianzan'
-)
 const metricSummary = computed(() =>
   activeMetric.value === 'view' ? '按阅读热度排序' : '按点赞热度排序'
 )
@@ -112,7 +109,17 @@ onMounted(loadHotArticles)
           <div class="hot-badge">
             <span class="hot-rank">1</span>
             <span class="hot-metric">
-              <i class="iconfont" :class="metricIcon" />
+              <i v-if="activeMetric === 'view'" class="iconfont icon-eye" />
+              <svg
+                v-else
+                viewBox="0 0 24 24"
+                class="hot-metric-like"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M17.5,1.917a6.4,6.4,0,0,0-5.5,3.3,6.4,6.4,0,0,0-5.5-3.3A6.8,6.8,0,0,0,0,8.967c0,4.547,4.786,9.513,8.8,12.88a4.974,4.974,0,0,0,6.4,0C19.214,18.48,24,13.514,24,8.967A6.8,6.8,0,0,0,17.5,1.917Zm-3.585,18.4a2.973,2.973,0,0,1-3.83,0C4.947,16.006,2,11.87,2,8.967a4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,11,8.967a1,1,0,0,0,2,0,4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,22,8.967C22,11.87,19.053,16.006,13.915,20.313Z"
+                />
+              </svg>
               {{ leadArticle.hotValue ?? 0 }}
             </span>
           </div>
@@ -135,7 +142,17 @@ onMounted(loadHotArticles)
               {{ index + 2 }}
             </div>
             <span class="hot-item-score">
-              <i class="iconfont" :class="metricIcon" />
+              <i v-if="activeMetric === 'view'" class="iconfont icon-eye" />
+              <svg
+                v-else
+                viewBox="0 0 24 24"
+                class="hot-item-score-like"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M17.5,1.917a6.4,6.4,0,0,0-5.5,3.3,6.4,6.4,0,0,0-5.5-3.3A6.8,6.8,0,0,0,0,8.967c0,4.547,4.786,9.513,8.8,12.88a4.974,4.974,0,0,0,6.4,0C19.214,18.48,24,13.514,24,8.967A6.8,6.8,0,0,0,17.5,1.917Zm-3.585,18.4a2.973,2.973,0,0,1-3.83,0C4.947,16.006,2,11.87,2,8.967a4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,11,8.967a1,1,0,0,0,2,0,4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,22,8.967C22,11.87,19.053,16.006,13.915,20.313Z"
+                />
+              </svg>
               {{ article.hotValue ?? 0 }}
             </span>
           </div>
@@ -156,8 +173,16 @@ onMounted(loadHotArticles)
                 ><i class="iconfont icon-eye" />
                 {{ article.viewCount ?? 0 }}</span
               >
-              <span
-                ><i class="iconfont icon-dianzan" />
+              <span class="hot-item-meta-like">
+                <svg
+                  viewBox="0 0 24 24"
+                  class="hot-item-meta-like-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M17.5,1.917a6.4,6.4,0,0,0-5.5,3.3,6.4,6.4,0,0,0-5.5-3.3A6.8,6.8,0,0,0,0,8.967c0,4.547,4.786,9.513,8.8,12.88a4.974,4.974,0,0,0,6.4,0C19.214,18.48,24,13.514,24,8.967A6.8,6.8,0,0,0,17.5,1.917Zm-3.585,18.4a2.973,2.973,0,0,1-3.83,0C4.947,16.006,2,11.87,2,8.967a4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,11,8.967a1,1,0,0,0,2,0,4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,22,8.967C22,11.87,19.053,16.006,13.915,20.313Z"
+                  />
+                </svg>
                 {{ article.likeCount ?? 0 }}</span
               >
             </div>
@@ -443,6 +468,14 @@ onMounted(loadHotArticles)
   color: var(--blog-text2);
   font-size: 12px;
 }
+.hot-metric-like {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.85px;
+  flex-shrink: 0;
+}
 
 .hot-item-category {
   margin: 0 0 8px;
@@ -461,6 +494,19 @@ onMounted(loadHotArticles)
 .hot-item-meta .iconfont {
   font-size: 12px;
   margin-right: 3px;
+}
+.hot-item-meta-like {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.hot-item-meta-like-icon {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.85px;
+  flex-shrink: 0;
 }
 
 .hot-list {
@@ -561,6 +607,14 @@ onMounted(loadHotArticles)
   padding: 4px 8px;
   border-radius: 999px;
   background: #f7f8fb;
+}
+.hot-item-score-like {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.85px;
+  flex-shrink: 0;
 }
 
 .hot-empty {

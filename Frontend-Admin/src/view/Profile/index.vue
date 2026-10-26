@@ -6,6 +6,13 @@ import { useBatchSelection } from '@/composables/useBatchSelection'
 
 const profileStore = useProfileStore()
 
+/**
+ * skills.icon 与 social_media.icon 统一使用 VARCHAR(255)。
+ */
+const ICON_URL_MAX_LENGTH = 255
+const iconUrlError = (icon, maxLength, label) =>
+  icon?.length > maxLength ? `${label}图标链接不能超过${maxLength}个字符` : ''
+
 /* ---- 当前 Tab ---- */
 const activeTab = ref('personal')
 
@@ -240,6 +247,12 @@ const openSkillDialog = (row = null) => {
 
 const handleSkillSave = async () => {
   if (!skillForm.value.name.trim()) return ElMessage.warning('技能名称不能为空')
+  const iconError = iconUrlError(
+    skillForm.value.icon,
+    ICON_URL_MAX_LENGTH,
+    '技能'
+  )
+  if (iconError) return ElMessage.warning(iconError)
   skillSaving.value = true
   try {
     await profileStore.saveSkill({ ...skillForm.value })
@@ -317,6 +330,12 @@ const openSocialDialog = (row = null) => {
 const handleSocialSave = async () => {
   if (!socialForm.value.name.trim())
     return ElMessage.warning('平台名称不能为空')
+  const iconError = iconUrlError(
+    socialForm.value.icon,
+    ICON_URL_MAX_LENGTH,
+    '社交'
+  )
+  if (iconError) return ElMessage.warning(iconError)
   socialSaving.value = true
   try {
     await profileStore.saveSocialMedia({ ...socialForm.value })
@@ -607,12 +626,12 @@ onMounted(() => {
                     border-radius: 4px;
                   "
                 />
-                <span v-else style="color: #909399; font-size: 12px">无图标</span>
-                <span
-                  v-if="row.icon"
-                  style="font-size: 12px; color: #606266"
-                  >{{ row.icon }}</span
+                <span v-else style="color: #909399; font-size: 12px"
+                  >无图标</span
                 >
+                <span v-if="row.icon" style="font-size: 12px; color: #606266">{{
+                  row.icon
+                }}</span>
               </div>
             </template>
           </el-table-column>
@@ -704,12 +723,12 @@ onMounted(() => {
                     border-radius: 4px;
                   "
                 />
-                <span v-else style="color: #909399; font-size: 12px">无图标</span>
-                <span
-                  v-if="row.icon"
-                  style="font-size: 12px; color: #606266"
-                  >{{ row.icon }}</span
+                <span v-else style="color: #909399; font-size: 12px"
+                  >无图标</span
                 >
+                <span v-if="row.icon" style="font-size: 12px; color: #606266">{{
+                  row.icon
+                }}</span>
               </div>
             </template>
           </el-table-column>
@@ -854,7 +873,10 @@ onMounted(() => {
             placeholder="简要描述（可选）"
           />
         </el-form-item>
-        <el-form-item label="图标">
+        <el-form-item
+          label="图标"
+          :error="iconUrlError(skillForm.icon, ICON_URL_MAX_LENGTH, '技能')"
+        >
           <div
             style="
               display: flex;
@@ -874,7 +896,7 @@ onMounted(() => {
             </el-upload>
             <el-input
               v-model="skillForm.icon"
-              placeholder="图标 URL（可手动填入）"
+              :placeholder="`图标 URL（最多 ${ICON_URL_MAX_LENGTH} 个字符）`"
               clearable
               style="flex: 1; min-width: 160px"
             />
@@ -942,7 +964,10 @@ onMounted(() => {
             clearable
           />
         </el-form-item>
-        <el-form-item label="图标">
+        <el-form-item
+          label="图标"
+          :error="iconUrlError(socialForm.icon, ICON_URL_MAX_LENGTH, '社交')"
+        >
           <div
             style="
               display: flex;
@@ -962,7 +987,7 @@ onMounted(() => {
             </el-upload>
             <el-input
               v-model="socialForm.icon"
-              placeholder="图标 URL（可手动填入）"
+              :placeholder="`图标 URL（最多 ${ICON_URL_MAX_LENGTH} 个字符）`"
               clearable
               style="flex: 1; min-width: 160px"
             />

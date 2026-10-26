@@ -46,11 +46,17 @@ http.interceptors.response.use(
           http._isRedirecting401 = false
         }, 2000)
       }
-    } else if (status === 403) {
+    } else if (!silent) {
       const backendMsg = error?.response?.data?.msg
-      ElMessage.error(backendMsg || '权限不足，无法执行该操作')
-    } else {
-      ElMessage.error('网络错误，请稍后重试')
+      const fallbackMsg =
+        status === 403
+          ? '权限不足，无法执行该操作'
+          : status
+            ? '请求失败，请稍后重试'
+            : '网络错误，请稍后重试'
+      ElMessage.error(
+        typeof backendMsg === 'string' && backendMsg ? backendMsg : fallbackMsg
+      )
     }
     return Promise.reject(error)
   }

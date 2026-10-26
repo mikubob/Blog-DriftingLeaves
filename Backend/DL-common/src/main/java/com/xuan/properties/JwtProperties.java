@@ -18,5 +18,5 @@ public class JwtProperties {
     /**
      * Cookie 相关配置
      */
-    private String cookieName = "admin_token";
+    private String cookieName = "dL9xK2mP5vQ8";
 }

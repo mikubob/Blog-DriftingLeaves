@@ -288,7 +288,10 @@ onMounted(() => {
             <textarea
               ref="msgTextareaRef"
               v-model="form.content"
-              :class="['form-textarea', { 'form-textarea-error': errors.content }]"
+              :class="[
+                'form-textarea',
+                { 'form-textarea-error': errors.content }
+              ]"
               placeholder="写点什么..."
               rows="4"
               @blur="validateField('content')"
@@ -309,12 +312,17 @@ onMounted(() => {
                   v-model="form.nickname"
                   type="text"
                   placeholder="昵称 *"
-                  :class="['form-input', { 'form-input-error': errors.nickname }]"
+                  :class="[
+                    'form-input',
+                    { 'form-input-error': errors.nickname }
+                  ]"
                   :disabled="!!editTarget"
                   @blur="validateField('nickname')"
                 />
               </div>
-              <p v-if="errors.nickname" class="error-text">{{ errors.nickname }}</p>
+              <p v-if="errors.nickname" class="error-text">
+                {{ errors.nickname }}
+              </p>
             </div>
             <div class="form-field">
               <div class="input-with-icon">
@@ -323,12 +331,17 @@ onMounted(() => {
                   v-model="form.emailOrQq"
                   type="text"
                   placeholder="邮箱/QQ号"
-                  :class="['form-input', { 'form-input-error': errors.emailOrQq }]"
+                  :class="[
+                    'form-input',
+                    { 'form-input-error': errors.emailOrQq }
+                  ]"
                   :disabled="!!editTarget"
                   @blur="validateField('emailOrQq')"
                 />
               </div>
-              <p v-if="errors.emailOrQq" class="error-text">{{ errors.emailOrQq }}</p>
+              <p v-if="errors.emailOrQq" class="error-text">
+                {{ errors.emailOrQq }}
+              </p>
             </div>
             <div v-if="!editTarget" class="form-field">
               <div
@@ -340,9 +353,17 @@ onMounted(() => {
                 <input
                   v-model="form.captchaAnswer"
                   placeholder="验证码"
-                  :class="['form-input', { 'form-input-error': errors.captcha }]"
+                  :class="[
+                    'form-input',
+                    { 'form-input-error': errors.captcha }
+                  ]"
                   @focus="captchaFocus = true"
-                  @blur="() => { captchaFocus = false; validateField('captcha') }"
+                  @blur="
+                    () => {
+                      captchaFocus = false
+                      validateField('captcha')
+                    }
+                  "
                 />
                 <span
                   v-show="(captchaHover || captchaFocus) && captcha.question"
@@ -357,7 +378,9 @@ onMounted(() => {
                   >↻</span
                 >
               </div>
-              <p v-if="errors.captcha" class="error-text">{{ errors.captcha }}</p>
+              <p v-if="errors.captcha" class="error-text">
+                {{ errors.captcha }}
+              </p>
             </div>
           </div>
           <div class="form-options">

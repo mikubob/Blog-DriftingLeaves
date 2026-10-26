@@ -68,7 +68,7 @@ create table personal_info(
 create table social_media(
                              id int primary key auto_increment,
                              name varchar(20) not null comment '名称',
-                             icon varchar(50) comment '图标类名',
+                             icon varchar(255) comment '图标URL',
                              link varchar(100) comment '链接',
                              sort int comment '排序，越小越靠前',
                              is_visible tinyint default 1 comment '是否可见',

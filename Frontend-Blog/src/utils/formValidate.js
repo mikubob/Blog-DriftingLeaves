@@ -24,7 +24,10 @@ export const isValidEmailOrQq = (value) => {
 
   // 长度校验
   if (trimmed.length > EMAIL_OR_QQ_MAX_LENGTH) {
-    return { valid: false, msg: `邮箱/QQ号不能超过 ${EMAIL_OR_QQ_MAX_LENGTH} 字` }
+    return {
+      valid: false,
+      msg: `邮箱/QQ号不能超过 ${EMAIL_OR_QQ_MAX_LENGTH} 字`
+    }
   }
 
   // QQ 号：5-12 位数字，首位非 0

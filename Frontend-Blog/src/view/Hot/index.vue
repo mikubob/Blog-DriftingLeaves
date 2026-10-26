@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, inject, onMounted, watch } from 'vue'
+import { ref, inject, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   getMonthHotArticlesByLike,
@@ -16,10 +16,6 @@ const activeScope = ref('site')
 const activeMetric = ref('view')
 const hotArticles = ref([])
 const loading = ref(false)
-
-const metricIcon = computed(() =>
-  activeMetric.value === 'view' ? 'icon-eye' : 'icon-dianzan'
-)
 
 const fmtDate = (d) => (d ? d.slice(0, 10).replace('T', ' ') : '')
 
@@ -146,7 +142,20 @@ onMounted(() => {
                     {{ article.categoryName }}
                   </span>
                   <span class="item-score">
-                    <i class="iconfont" :class="metricIcon" />
+                    <i
+                      v-if="activeMetric === 'view'"
+                      class="iconfont icon-eye"
+                    />
+                    <svg
+                      v-else
+                      viewBox="0 0 24 24"
+                      class="item-score-like"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M17.5,1.917a6.4,6.4,0,0,0-5.5,3.3,6.4,6.4,0,0,0-5.5-3.3A6.8,6.8,0,0,0,0,8.967c0,4.547,4.786,9.513,8.8,12.88a4.974,4.974,0,0,0,6.4,0C19.214,18.48,24,13.514,24,8.967A6.8,6.8,0,0,0,17.5,1.917Zm-3.585,18.4a2.973,2.973,0,0,1-3.83,0C4.947,16.006,2,11.87,2,8.967a4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,11,8.967a1,1,0,0,0,2,0,4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,22,8.967C22,11.87,19.053,16.006,13.915,20.313Z"
+                      />
+                    </svg>
                     {{ article.hotValue ?? 0 }}
                   </span>
                 </div>
@@ -163,8 +172,16 @@ onMounted(() => {
                     ><i class="iconfont icon-eye" />
                     {{ article.viewCount ?? 0 }}</span
                   >
-                  <span
-                    ><i class="iconfont icon-dianzan" />
+                  <span class="item-meta-like">
+                    <svg
+                      viewBox="0 0 24 24"
+                      class="item-meta-like-icon"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M17.5,1.917a6.4,6.4,0,0,0-5.5,3.3,6.4,6.4,0,0,0-5.5-3.3A6.8,6.8,0,0,0,0,8.967c0,4.547,4.786,9.513,8.8,12.88a4.974,4.974,0,0,0,6.4,0C19.214,18.48,24,13.514,24,8.967A6.8,6.8,0,0,0,17.5,1.917Zm-3.585,18.4a2.973,2.973,0,0,1-3.83,0C4.947,16.006,2,11.87,2,8.967a4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,11,8.967a1,1,0,0,0,2,0,4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,22,8.967C22,11.87,19.053,16.006,13.915,20.313Z"
+                      />
+                    </svg>
                     {{ article.likeCount ?? 0 }}</span
                   >
                 </div>
@@ -512,6 +529,14 @@ onMounted(() => {
 .item-score .iconfont {
   font-size: 12px;
 }
+.item-score-like {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.85px;
+  flex-shrink: 0;
+}
 .item-title {
   margin: 0 0 6px;
   font-size: 16px;
@@ -543,6 +568,19 @@ onMounted(() => {
 .item-meta .iconfont {
   font-size: 12px;
   margin-right: 2px;
+}
+.item-meta-like {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.item-meta-like-icon {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.85px;
+  flex-shrink: 0;
 }
 
 .empty {
