@@ -1,4 +1,4 @@
 import request from '@/utils/request'
 
 /** 获取个人信息 */
-export const getPersonalInfo = () => request.get('/home/personalInfo')
+export const getPersonalInfo = (config) => request.get('/home/personalInfo', config)

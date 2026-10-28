@@ -16,8 +16,28 @@ import org.apache.ibatis.annotations.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * 文章持久层，提供文章投影查询、关系锁及统计增量更新。
+ */
 @Mapper
 public interface ArticleMapper extends BaseMapper<Articles> {
+    /**
+     * 以行锁读取文章，调用方须处于数据库事务内。
+     * @param id 文章 ID
+     * @return 锁定的记录，不存在时为 null
+     */
+    @org.apache.ibatis.annotations.Select("SELECT * FROM articles WHERE id = #{id} FOR UPDATE")
+    Articles lockById(Long id);
+
+    /**
+     * 原子累加审核评论数，下限为零。
+     * @param id 文章 ID
+     * @param delta 审核、重新编辑或删除导致的数量变化
+     * @return 受影响行数
+     */
+    @org.apache.ibatis.annotations.Update("UPDATE articles SET comment_count = GREATEST(0, COALESCE(comment_count,0) + #{delta}) WHERE id = #{id}")
+    int addCommentCount(@Param("id") Long id, @Param("delta") long delta);
+
 
     /**
      * 管理端分页查询文章列表。
@@ -30,7 +50,7 @@ public interface ArticleMapper extends BaseMapper<Articles> {
      * @return 带分类名称的文章分页结果
      */
     IPage<ArticleVO> pageQueryWithCategory(IPage<ArticleVO> page, @Param("dto") ArticlePageQueryDTO dto);
-
+    
     /**
      * 全文搜索文章（使用 MySQL FULLTEXT 索引）
      * @param page 分页对象
@@ -38,35 +58,35 @@ public interface ArticleMapper extends BaseMapper<Articles> {
      * @return 分页结果
      */
     IPage<ArticleVO> searchWithFullText(IPage<ArticleVO> page, @Param("keyword") String keyword);
-
+    
     /**
      * 获取已发布文章分页列表
      * @param page 分页对象
      * @return 分页结果
      */
     IPage<BlogArticleVO> getPublishedPage(IPage<BlogArticleVO> page);
-
+    
     /**
      * 根据 slug 获取文章详情
      * @param slug 文章 slug
      * @return 文章详情 VO
      */
     BlogArticleDetailVO getBySlug(@Param("slug") String slug);
-
+    
     /**
      * 获取上一篇文章（按发布时间）
      * @param id 当前文章 ID
      * @return 上一篇文章 VO
      */
     BlogArticleVO getPrevArticle(@Param("id") Long id);
-
+    
     /**
      * 获取下一篇文章（按发布时间）
      * @param id 当前文章 ID
      * @return 下一篇文章 VO
      */
     BlogArticleVO getNextArticle(@Param("id") Long id);
-
+    
     /**
      * 获取相关文章推荐（同分类，排除当前文章）
      * @param articleId 当前文章 ID
@@ -74,13 +94,13 @@ public interface ArticleMapper extends BaseMapper<Articles> {
      * @return 相关文章列表
      */
     List<BlogArticleVO> getRelatedArticles(@Param("articleId") Long articleId, @Param("categoryId") Long categoryId);
-
+    
     /**
      * 获取文章归档列表
      * @return 文章归档列表
      */
     List<ArticleArchiveItemVO> getArchiveList();
-
+    
     /**
      * 博客端文章搜索（仅获取已发布文章）
      * @param page 分页对象
@@ -105,9 +125,19 @@ public interface ArticleMapper extends BaseMapper<Articles> {
      */
     IPage<BlogArticleVO> getPublishedByTagId(IPage<BlogArticleVO> page, @Param("tagId") Long tagId);
 
-    void addViewCount(@Param("id") Long id, @Param("increment") int increment);
+    /**
+     * 原子累加本批浏览计数，由批次服务在事务内调用。
+     * @param id 文章 ID
+     * @param increment 本批增量
+     */
+    void addViewCount(@Param("id") Long id, @Param("increment") long increment);
 
-    void addLikeCount(@Param("id") Long id, @Param("increment") int increment);
+    /**
+     * 原子累加本批点赞计数，允许取消点赞产生负增量。
+     * @param id 文章 ID
+     * @param increment 本批增量
+     */
+    void addLikeCount(@Param("id") Long id, @Param("increment") long increment);
 
     /**
      * 获取文章浏览量 top10

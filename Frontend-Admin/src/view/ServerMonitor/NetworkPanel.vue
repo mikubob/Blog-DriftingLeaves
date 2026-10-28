@@ -1,5 +1,7 @@
 <script setup>
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { makeLineOption } from './lineOption'
+import { ref } from 'vue'
+import { useChart } from './useChart'
 import * as echarts from 'echarts/core'
 import { LineChart } from 'echarts/charts'
 import {
@@ -17,6 +19,7 @@ echarts.use([
   CanvasRenderer
 ])
 
+/** 输入网络快照/资源选项和部署模式；仅 emit update:resourceName，图表实例交给 useChart 随挂载管理。 */
 const props = defineProps({
   detail: {
     type: Object,
@@ -38,59 +41,9 @@ const props = defineProps({
 
 const emit = defineEmits(['update:resourceName'])
 const chartEl = ref(null)
-let chart = null
 
-function makeLineOption({ legend, xAxisData, series, yAxisName = 'KB/s' }) {
-  return {
-    tooltip: { trigger: 'axis' },
-    legend: {
-      top: 0,
-      data: legend.map((item) => item.name),
-      textStyle: { color: '#606266', fontSize: 12 }
-    },
-    grid: { left: 42, right: 22, top: 36, bottom: 24 },
-    xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: xAxisData,
-      axisLine: { lineStyle: { color: '#e4e7ed' } },
-      axisLabel: { color: '#909399', fontSize: 12 }
-    },
-    yAxis: {
-      type: 'value',
-      name: yAxisName,
-      nameTextStyle: { color: '#909399', fontSize: 12, padding: [0, 0, 0, 8] },
-      splitLine: { lineStyle: { color: '#f1f3f5' } },
-      axisLabel: { color: '#909399', fontSize: 12 }
-    },
-    series: series.map((item) => ({
-      ...item,
-      type: 'line',
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 5,
-      lineStyle: { width: 2, color: item.color },
-      itemStyle: { color: item.color },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0,
-          y: 0,
-          x2: 0,
-          y2: 1,
-          colorStops: [
-            { offset: 0, color: `${item.color}2f` },
-            { offset: 1, color: `${item.color}00` }
-          ]
-        }
-      }
-    })),
-    color: legend.map((item) => item.color)
-  }
-}
 
-function renderChart() {
-  if (!chart) return
+function renderChart(chart) {
 
   const points = Array.isArray(props.detail.points) ? props.detail.points : []
   chart.setOption(
@@ -116,30 +69,7 @@ function renderChart() {
   )
 }
 
-function resizeChart() {
-  chart?.resize()
-}
-
-watch(
-  () => props.detail,
-  () => nextTick(renderChart),
-  { deep: true }
-)
-
-onMounted(async () => {
-  await nextTick()
-  if (chartEl.value) {
-    chart = echarts.init(chartEl.value)
-    renderChart()
-  }
-  window.addEventListener('resize', resizeChart)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', resizeChart)
-  chart?.dispose()
-  chart = null
-})
+useChart(chartEl, () => props.detail, renderChart)
 </script>
 
 <template>

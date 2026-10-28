@@ -7,18 +7,24 @@ import {
   deleteFriendLinks
 } from '@/api/friendLink'
 
+/** 友链列表与变更后刷新；只接收最新读取响应，读取失败保留成功数据；变更失败向页面传播。 */
 export const useFriendLinkStore = defineStore('friendLink', () => {
   const list = ref([])
   const loading = ref(false)
 
+  let fetchListToken = 0
   /** 拉取所有友情链接 */
   const fetchList = async () => {
+    const token = ++fetchListToken
     loading.value = true
     try {
       const res = await getFriendLinkList()
+      if (token !== fetchListToken) return
       list.value = res.data ?? []
+    } catch {
+      // The request layer reports failed reads; keep the last successful data.
     } finally {
-      loading.value = false
+      if (token === fetchListToken) loading.value = false
     }
   }
 

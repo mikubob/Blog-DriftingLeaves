@@ -1,4 +1,5 @@
 <script setup>
+import { blockVisitors, unblockVisitors, deleteVisitors } from '@/api/visitor'
 import { ref, onMounted } from 'vue'
 import dayjs from 'dayjs'
 import { useVisitorStore } from '@/stores'
@@ -64,7 +65,7 @@ const blockOne = async (row) => {
   } catch {
     return
   }
-  await visitorStore.block([row.id])
+  await blockVisitors([row.id])
   ElMessage.success('封禁成功')
   load()
 }
@@ -80,21 +81,21 @@ const batchBlock = async () => {
   } catch {
     return
   }
-  await visitorStore.block(selected.value.map((row) => row.id))
+  await blockVisitors(selected.value.map((row) => row.id))
   clearSelection()
   ElMessage.success('批量封禁成功')
   load()
 }
 
 const unblockOne = async (row) => {
-  await visitorStore.unblock([row.id])
+  await unblockVisitors([row.id])
   ElMessage.success('解封成功')
   load()
 }
 
 const batchUnblock = async () => {
   if (!selected.value.length) return ElMessage.warning('请先选择访客')
-  await visitorStore.unblock(selected.value.map((row) => row.id))
+  await unblockVisitors(selected.value.map((row) => row.id))
   clearSelection()
   ElMessage.success('批量解封成功')
   load()
@@ -110,7 +111,7 @@ const deleteOne = async (row) => {
   } catch {
     return
   }
-  await visitorStore.remove([row.id])
+  await deleteVisitors([row.id])
   ElMessage.success('删除成功')
   load()
 }
@@ -126,7 +127,7 @@ const batchDelete = async () => {
   } catch {
     return
   }
-  await visitorStore.remove(selected.value.map((row) => row.id))
+  await deleteVisitors(selected.value.map((row) => row.id))
   clearSelection()
   ElMessage.success('批量删除成功')
   load()

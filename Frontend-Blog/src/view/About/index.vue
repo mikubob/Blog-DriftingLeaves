@@ -1,4 +1,5 @@
 <script setup>
+import { safeLink } from '@shared/links.mjs'
 import { inject, onMounted, computed } from 'vue'
 import { useBlogStore } from '@/stores'
 import SidebarCard from '@/components/SidebarCard.vue'
@@ -154,7 +155,7 @@ onMounted(() => {
               <p v-if="info.github" class="github-hint">
                 如果你喜欢这样的风格或对部分功能感兴趣，欢迎去
                 <a
-                  :href="info.github"
+                  :href="safeLink(info.github)"
                   target="_blank"
                   rel="noopener"
                   class="inline-link"

@@ -1,4 +1,5 @@
 <script setup>
+import { safeLink } from '@shared/links.mjs'
 import { ref, onMounted } from 'vue'
 import { useFriendLinkStore } from '@/stores'
 import { uploadFile } from '@/api/settings'
@@ -52,9 +53,7 @@ const saving = ref(false)
 const handleAvatarUpload = async (options) => {
   uploading.value = true
   try {
-    const fd = new FormData()
-    fd.append('file', options.file)
-    const res = await uploadFile(fd)
+    const res = await uploadFile(options.file)
     form.value.avatarUrl = res.data
     ElMessage.success('图片上传成功')
   } finally {
@@ -87,22 +86,22 @@ const {
 
 /* ---- 删除 ---- */
 const deleteOne = async (row) => {
-  await ElMessageBox.confirm(`确认删除友链「${row.name}」？`, '警告', {
+  if (!await ElMessageBox.confirm(`确认删除友链「${row.name}」？`, '警告', {
     confirmButtonText: '删除',
     cancelButtonText: '取消',
     type: 'warning'
-  })
+  }).then(() => true, () => false)) return
   await friendLinkStore.removeFriendLinks([row.id])
   ElMessage.success('删除成功')
 }
 
 const batchDelete = async () => {
   if (!selected.value.length) return ElMessage.warning('请先选择友链')
-  await ElMessageBox.confirm(
+  if (!await ElMessageBox.confirm(
     `确认删除选中的 ${selected.value.length} 条友链？`,
     '警告',
     { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
-  )
+  ).then(() => true, () => false)) return
   await friendLinkStore.removeFriendLinks(selected.value.map((r) => r.id))
   clearSelection()
   ElMessage.success('批量删除成功')
@@ -173,7 +172,7 @@ onMounted(() => friendLinkStore.fetchList())
         <el-table-column prop="name" label="名称" min-width="140" />
         <el-table-column label="链接地址" min-width="240">
           <template #default="{ row }">
-            <a :href="row.url" target="_blank" rel="noopener" class="link-href">
+            <a :href="safeLink(row.url)" target="_blank" rel="noopener" class="link-href">
               {{ row.url }}
             </a>
           </template>

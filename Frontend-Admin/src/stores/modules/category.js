@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import {
   getCategoryList,
   createCategory,
@@ -11,28 +11,40 @@ import {
   deleteTags
 } from '@/api/category'
 
+/** 分类/标签共享列表与变更后刷新；两类读取各自只应用最新响应，共享 loading 等待全部读取。变更失败向页面传播。 */
 export const useCategoryStore = defineStore('category', () => {
   const categories = ref([])
   const tags = ref([])
-  const loading = ref(false)
+  const pendingCount = ref(0)
+  const loading = computed(() => pendingCount.value > 0)
 
+  let fetchCategoriesToken = 0
   const fetchCategories = async () => {
-    loading.value = true
+    const token = ++fetchCategoriesToken
+    pendingCount.value++
     try {
       const res = await getCategoryList()
+      if (token !== fetchCategoriesToken) return
       categories.value = res.data || []
+    } catch {
+      // The request layer reports failed reads; keep the last successful data.
     } finally {
-      loading.value = false
+      pendingCount.value--
     }
   }
 
+  let fetchTagsToken = 0
   const fetchTags = async () => {
-    loading.value = true
+    const token = ++fetchTagsToken
+    pendingCount.value++
     try {
       const res = await getTagList()
+      if (token !== fetchTagsToken) return
       tags.value = res.data || []
+    } catch {
+      // The request layer reports failed reads; keep the last successful data.
     } finally {
-      loading.value = false
+      pendingCount.value--
     }
   }
 

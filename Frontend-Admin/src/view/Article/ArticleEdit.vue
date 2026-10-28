@@ -3,8 +3,9 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useArticleStore } from '@/stores'
 import { uploadFile } from '@/api/settings'
+import { getArticleById } from '@/api/article'
 import { MdEditor } from 'md-editor-v3'
-import EmojiPicker from '@/components/EmojiPicker.vue'
+import EmojiPicker from '@shared/EmojiPicker.vue'
 import 'md-editor-v3/lib/style.css'
 import {
   MarkdownHeadingIds,
@@ -17,10 +18,10 @@ const route = useRoute()
 const router = useRouter()
 const articleStore = useArticleStore()
 
-const isEdit = computed(() => !!route.params.id)
+const isEdit = computed(() => !!form.value.id)
 
 const form = ref({
-  id: null,
+  id: route.params.id || null,
   title: '',
   slug: '',
   summary: '',
@@ -42,6 +43,9 @@ const onContentChange = (md) => {
   form.value.contentMarkdown = md
 }
 
+const initializing = ref(true)
+const loadError = ref('')
+let active = true
 const saving = ref(false)
 const uploadingCover = ref(false)
 const wordCount = computed(() => form.value.contentMarkdown.trim().length)
@@ -75,6 +79,7 @@ const scheduleEditorRefresh = () => {
   }
 
   editorRefreshTimer = window.setTimeout(async () => {
+    if (!active) return
     suppressResizeRefreshUntil = Date.now() + 400
     mdEditorRef.value?.rerender?.()
     await nextTick()
@@ -114,6 +119,7 @@ const bindPreviewImageListeners = () => {
 const initPreviewSyncWatchers = async () => {
   cleanupPreviewObserver()
   await nextTick()
+  if (!active) return
 
   const preview = editorPanelRef.value?.querySelector('.md-editor-preview')
   if (!preview) return
@@ -168,16 +174,13 @@ const onUploadImg = async (files, callback) => {
   try {
     const urls = await Promise.all(
       files.map(async (file) => {
-        const fd = new FormData()
-        fd.append('file', file)
-        const res = await uploadFile(fd)
+        const res = await uploadFile(file)
         return res.data
       })
     )
     callback(urls)
     ElMessage.success('图片上传成功')
   } catch {
-    ElMessage.error('图片上传失败')
     callback([])
   }
 }
@@ -186,9 +189,7 @@ const onUploadImg = async (files, callback) => {
 const handleCoverUpload = async (options) => {
   uploadingCover.value = true
   try {
-    const fd = new FormData()
-    fd.append('file', options.file)
-    const res = await uploadFile(fd)
+    const res = await uploadFile(options.file)
     form.value.coverImage = res.data
     ElMessage.success('封面上传成功')
   } finally {
@@ -231,31 +232,48 @@ const insertEditorEmoji = (char) => {
 }
 
 /* ---- 保存 / 发布 ---- */
-const isSaved = ref(false)
-const handleSave = async (
+let savePromise = null
+/**
+ * 保存提交时快照并共享在途 Promise；创建 ID 回填，期间输入保留为未保存状态。
+ * @param {0|1} isPublished 草稿/发布；快捷键及离页保存沿用 0
+ * @param {{redirectAfterSave?: boolean}} options 发布成功且无新输入时可跳列表
+ * @returns {Promise<boolean>} 仅本次成功且当前内容均已保存时为 true；校验/请求失败为 false
+ */
+const handleSave = (
   isPublished,
   { redirectAfterSave = isPublished === 1 } = {}
 ) => {
-  if (!form.value.title.trim()) return ElMessage.warning('请输入文章标题')
-  if (!form.value.slug.trim())
-    return ElMessage.warning('请输入 URL 标识 (Slug)')
-  if (!form.value.contentMarkdown.trim())
-    return ElMessage.warning('请输入文章内容')
-  if (!form.value.categoryId) return ElMessage.warning('请选择文章分类')
-  if (saving.value) return
-  saving.value = true
-  try {
-    form.value.isPublished = isPublished
-    await articleStore.saveArticle({ ...form.value })
-    isSaved.value = isPublished === 1 && redirectAfterSave
-    takeSnapshot()
-    ElMessage.success(isPublished ? '发布成功' : '保存草稿成功')
-    if (redirectAfterSave) {
-      router.push('/article/list')
-    }
-  } finally {
-    saving.value = false
+  if (savePromise) return savePromise
+  if (!active) return Promise.resolve(false)
+  if (initializing.value || loadError.value) return Promise.resolve(false)
+  const missing = !form.value.title.trim() ? '请输入文章标题'
+    : !form.value.slug.trim() ? '请输入 URL 标识 (Slug)'
+      : !form.value.contentMarkdown.trim() ? '请输入文章内容'
+        : !form.value.categoryId ? '请选择文章分类' : ''
+  if (missing) {
+    ElMessage.warning(missing)
+    return Promise.resolve(false)
   }
+  saving.value = true
+  const data = { ...form.value, tagIds: [...form.value.tagIds], isPublished }
+  savePromise = (async () => {
+    try {
+      const res = await articleStore.saveArticle(data)
+      if (!data.id) form.value.id = res.data
+      form.value.isPublished = isPublished
+      // Snapshot the submitted content so edits made during the request stay dirty.
+      initialSnapshot.value = contentSnapshot(data)
+      ElMessage.success(isPublished ? '发布成功' : '保存草稿成功')
+      if (active && redirectAfterSave && !hasUnsavedChanges()) router.push('/article/list')
+      return !hasUnsavedChanges()
+    } catch {
+      return false
+    } finally {
+      saving.value = false
+      savePromise = null
+    }
+  })()
+  return savePromise
 }
 
 /* ---- Ctrl/Cmd + S 保存草稿 ---- */
@@ -268,33 +286,17 @@ const onKeydownSave = (e) => {
 
 /* ---- 内容变更检测 & 离开提示 ---- */
 const initialSnapshot = ref('')
-const hasUnsavedChanges = () => {
-  if (isSaved.value) return false
-  const current = JSON.stringify({
-    title: form.value.title,
-    slug: form.value.slug,
-    summary: form.value.summary,
-    coverImage: form.value.coverImage,
-    categoryId: form.value.categoryId,
-    tagIds: form.value.tagIds,
-    contentMarkdown: form.value.contentMarkdown
-  })
-  return current !== initialSnapshot.value
-}
-
-const takeSnapshot = () => {
-  initialSnapshot.value = JSON.stringify({
-    title: form.value.title,
-    slug: form.value.slug,
-    summary: form.value.summary,
-    coverImage: form.value.coverImage,
-    categoryId: form.value.categoryId,
-    tagIds: form.value.tagIds,
-    contentMarkdown: form.value.contentMarkdown
-  })
-}
+const contentSnapshot = (data) => JSON.stringify({
+  title: data.title, slug: data.slug, summary: data.summary,
+  coverImage: data.coverImage, categoryId: data.categoryId,
+  tagIds: data.tagIds, contentMarkdown: data.contentMarkdown
+})
+const hasUnsavedChanges = () => contentSnapshot(form.value) !== initialSnapshot.value
+const takeSnapshot = () => { initialSnapshot.value = contentSnapshot(form.value) }
+takeSnapshot()
 
 onBeforeRouteLeave(async () => {
+  if (savePromise) return await savePromise
   if (!hasUnsavedChanges()) return true
   try {
     await ElMessageBox.confirm('你有未保存的内容，是否保存为草稿？', '提示', {
@@ -304,8 +306,7 @@ onBeforeRouteLeave(async () => {
       type: 'warning'
     })
     // 用户点击保存草稿
-    await handleSave(0, { redirectAfterSave: false })
-    return true
+    return await handleSave(0, { redirectAfterSave: false })
   } catch (action) {
     if (action === 'cancel') {
       // 用户点击不保存，直接离开
@@ -316,12 +317,16 @@ onBeforeRouteLeave(async () => {
   }
 })
 
-onMounted(async () => {
-  window.addEventListener('keydown', onKeydownSave)
-  await Promise.all([articleStore.fetchCategories(), articleStore.fetchTags()])
-  if (isEdit.value) {
-    const res = await articleStore.fetchDetail(route.params.id)
-    if (res) {
+/** 选项可独立失败；详情成功初始化前禁止保存，避免空白覆盖；卸载后不启动观察器。 */
+const loadEditor = async () => {
+  initializing.value = true
+  loadError.value = ''
+  await Promise.allSettled([articleStore.fetchCategories(), articleStore.fetchTags()])
+  if (!active) return
+  try {
+    if (route.params.id) {
+      const { data: res } = await getArticleById(route.params.id)
+      if (!active) return
       Object.assign(form.value, {
         id: res.id,
         title: res.title ?? '',
@@ -333,14 +338,23 @@ onMounted(async () => {
         contentMarkdown: res.contentMarkdown || res.contentHtml || '',
         isPublished: res.isPublished ?? 0
       })
+      takeSnapshot()
     }
+    initEditorResizeObserver()
+    initPreviewSyncWatchers()
+  } catch {
+    loadError.value = '文章加载失败，请重试后再保存'
+  } finally {
+    initializing.value = false
   }
-  takeSnapshot()
-  initEditorResizeObserver()
-  initPreviewSyncWatchers()
+}
+onMounted(() => {
+  window.addEventListener('keydown', onKeydownSave)
+  loadEditor()
 })
 
 onBeforeUnmount(() => {
+  active = false
   window.removeEventListener('keydown', onKeydownSave)
   if (editorRefreshTimer) {
     window.clearTimeout(editorRefreshTimer)
@@ -351,7 +365,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="article-edit">
+  <div v-loading="initializing" class="article-edit">
+    <div v-if="loadError" role="alert">{{ loadError }} <button type="button" @click="loadEditor">重试</button></div>
     <!-- 顶部操作栏 -->
     <div class="edit-topbar">
       <span class="edit-title">{{ isEdit ? '编辑文章' : '新建文章' }}</span>
@@ -360,13 +375,14 @@ onBeforeUnmount(() => {
         <el-button size="small" @click="router.push('/article/list')"
           >取消</el-button
         >
-        <el-button size="small" :loading="saving" @click="handleSave(0)"
+        <el-button size="small" :loading="saving" :disabled="initializing || !!loadError" @click="handleSave(0)"
           >保存草稿</el-button
         >
         <el-button
           size="small"
           type="primary"
           :loading="saving"
+          :disabled="initializing || !!loadError"
           @click="handleSave(1)"
           >发布</el-button
         >
@@ -377,6 +393,7 @@ onBeforeUnmount(() => {
     <div class="title-row">
       <el-input
         v-model="form.title"
+        aria-label="文章标题"
         placeholder="请输入文章标题…"
         class="title-input"
         size="large"
@@ -420,6 +437,7 @@ onBeforeUnmount(() => {
           <div class="aside-label">Slug <span class="req">*</span></div>
           <el-input
             v-model="form.slug"
+            aria-label="URL 标识 Slug"
             placeholder="URL 路径标识"
             clearable
             size="small"
@@ -430,6 +448,7 @@ onBeforeUnmount(() => {
           <div class="aside-label">摘要</div>
           <el-input
             v-model="form.summary"
+            aria-label="文章摘要"
             type="textarea"
             :rows="3"
             placeholder="文章摘要（选填）"
@@ -441,6 +460,7 @@ onBeforeUnmount(() => {
           <div class="aside-label">分类 <span class="req">*</span></div>
           <el-select
             v-model="form.categoryId"
+            aria-label="文章分类"
             placeholder="选择分类"
             style="width: 100%"
             size="small"
@@ -458,6 +478,7 @@ onBeforeUnmount(() => {
           <div class="aside-label">标签</div>
           <el-select
             v-model="form.tagIds"
+            aria-label="文章标签"
             multiple
             placeholder="选择标签"
             style="width: 100%"
@@ -492,6 +513,7 @@ onBeforeUnmount(() => {
           </el-upload>
           <el-input
             v-model="form.coverImage"
+            aria-label="封面图片 URL"
             placeholder="或直接输入图片 URL"
             clearable
             size="small"

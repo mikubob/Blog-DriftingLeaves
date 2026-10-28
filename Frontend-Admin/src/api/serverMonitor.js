@@ -8,55 +8,8 @@ import http from '@/utils/request'
  *   diskIoResourceName?: string,
  *   limit?: number
  * }} params
+ * @param {import('axios').AxiosRequestConfig & {silent?: boolean}} [config] signal 取消读取；silent 由监控页展示错误
+ * @returns {Promise<{code: number, data: object}>} 快照 Result，业务及 HTTP 失败拒绝
  */
-export const getServerMonitorSnapshot = (params) =>
-  http.get('/admin/server-monitor/snapshot', { params })
-
-/** 获取服务器监测概览 */
-export const getServerMonitorOverview = () =>
-  http.get('/admin/server-monitor/overview')
-
-/** 获取负载详情 */
-export const getServerMonitorLoad = () =>
-  http.get('/admin/server-monitor/load')
-
-/** 获取 CPU 详情 */
-export const getServerMonitorCpu = () =>
-  http.get('/admin/server-monitor/cpu')
-
-/** 获取内存详情 */
-export const getServerMonitorMemory = () =>
-  http.get('/admin/server-monitor/memory')
-
-/** 获取磁盘选项 */
-export const getServerMonitorDiskOptions = () =>
-  http.get('/admin/server-monitor/disk/options')
-
-/**
- * 获取磁盘详情
- * @param {{ resourceName?: string }} params
- */
-export const getServerMonitorDisk = (params) =>
-  http.get('/admin/server-monitor/disk', { params })
-
-/** 获取网卡选项 */
-export const getServerMonitorNetworkOptions = () =>
-  http.get('/admin/server-monitor/network/options')
-
-/** 获取磁盘 IO 选项 */
-export const getServerMonitorDiskIoOptions = () =>
-  http.get('/admin/server-monitor/disk-io/options')
-
-/**
- * 获取网络详情
- * @param {{ resourceName?: string, limit?: number }} params
- */
-export const getServerMonitorNetwork = (params) =>
-  http.get('/admin/server-monitor/network', { params })
-
-/**
- * 获取磁盘 IO 详情
- * @param {{ resourceName?: string, limit?: number }} params
- */
-export const getServerMonitorDiskIo = (params) =>
-  http.get('/admin/server-monitor/disk-io', { params })
+export const getServerMonitorSnapshot = (params, config = {}) =>
+  http.get('/admin/server-monitor/snapshot', { ...config, params })

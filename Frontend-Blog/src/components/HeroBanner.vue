@@ -8,6 +8,7 @@ const route = useRoute()
 const blogStore = useBlogStore()
 
 const props = defineProps({
+  // 封面/标题/meta 由页面提供，meta 仅按文本展示；组件不请求数据或创建监听器。
   /** 文章封面 (文章详情页传入) */
   coverImage: { type: String, default: '' },
   /** 文章标题 */
@@ -41,7 +42,7 @@ const bgImage = computed(() => {
       <!-- 自定义标题 (文章/分类/标签等) -->
       <template v-else-if="title">
         <h1 class="hero-article-title">{{ title }}</h1>
-        <p v-if="meta" class="hero-article-meta" v-html="meta" />
+        <p v-if="meta" class="hero-article-meta">{{ meta }}</p>
       </template>
       <!-- 其他页面: 显示路由 meta 标题 -->
       <template v-else>

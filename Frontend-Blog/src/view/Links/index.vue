@@ -2,6 +2,7 @@
 import { ref, inject, onMounted } from 'vue'
 import { getFriendLinks } from '@/api/friendLink'
 import SidebarCard from '@/components/SidebarCard.vue'
+import { safeLink } from '@shared/links.mjs'
 
 const { articleTitle, articleMeta } = inject('setHero')
 
@@ -45,7 +46,7 @@ onMounted(() => {
             <a
               v-for="link in links"
               :key="link.id"
-              :href="link.url"
+              :href="safeLink(link.url)"
               target="_blank"
               rel="noopener noreferrer"
               class="link-card"

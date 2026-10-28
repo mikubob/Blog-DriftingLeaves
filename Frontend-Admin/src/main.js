@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import { useUserStore } from '@/stores/modules/user'
+import { setSessionExpiredHandler } from '@/utils/request'
 
 import App from './App.vue'
 import router from './router'
@@ -15,6 +16,10 @@ app.use(pinia)
 // 应用启动前尝试恢复登录状态
 // Token 存储在后端 HttpOnly Cookie 中，前端通过调用个人信息接口判断是否已登录
 const userStore = useUserStore()
+setSessionExpiredHandler(() => {
+  userStore.clearUserInfo()
+  return router.replace('/login')
+})
 try {
   await userStore.fetchUserInfo(true)
 } catch {

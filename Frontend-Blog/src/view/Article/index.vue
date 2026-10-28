@@ -1,4 +1,7 @@
 <script setup>
+import { useDiscussionForm } from '@/composables/useDiscussionForm'
+import { discussionDefaults, discussionErrors, fmtDiscussionDate, discussionAvatar, getInitial } from '@/utils/discussion'
+
 import {
   ref,
   inject,
@@ -18,15 +21,8 @@ import {
   deleteComment
 } from '@/api/comment'
 import { likeArticle, unlikeArticle, hasLiked } from '@/api/like'
-import { generateCaptcha } from '@/api/captcha'
-import {
-  isValidNickname,
-  isValidContent,
-  isValidEmailOrQq,
-  isValidCaptcha
-} from '@/utils/formValidate'
 import TableOfContents from '@/components/TableOfContents.vue'
-import EmojiPicker from '@/components/EmojiPicker.vue'
+import EmojiPicker from '@shared/EmojiPicker.vue'
 import { MdPreview } from 'md-editor-v3'
 import 'md-editor-v3/lib/preview.css'
 import { MarkdownHeadingIds } from '@/utils/markdownAnchors'
@@ -51,6 +47,7 @@ const isDarkMode = computed(() => previewTheme.value === 'dark')
 const article = ref(null)
 const loading = ref(true)
 const liked = ref(false)
+const likeReady = ref(false)
 const liking = ref(false)
 const readingProgress = ref(0)
 const articleContentRef = ref(null)
@@ -62,70 +59,40 @@ let readingProgressFrame = 0
 
 /* 评论 */
 const comments = ref([])
-const commentForm = ref({
-  nickname: '',
-  emailOrQq: '',
-  content: '',
-  captchaAnswer: '',
-  isSecret: false,
-  isNotice: true,
-  isMarkdown: true
-})
-
-// 各字段校验错误信息
-const errors = ref({
-  nickname: '',
-  emailOrQq: '',
-  content: '',
-  captcha: ''
-})
-
-// 内容实时字数
-const contentLength = computed(() => commentForm.value.content?.length ?? 0)
-
+const commentTextareaRef = ref(null)
+const { form: commentForm, errors, contentLength, captcha, captchaHover, captchaFocus,
+  loadCaptcha, validateField, validateForm: validateDiscussion, insertEmoji } = useDiscussionForm(visitorStore, commentTextareaRef)
 const replyTarget = ref(null)
 const submitting = ref(false)
 const editingId = ref(null)
 const editContent = ref('')
-const commentTextareaRef = ref(null)
+const insertCommentEmoji = insertEmoji
 
-/* 插入 emoji 到评论文本框光标位置 */
-const insertCommentEmoji = (char) => {
-  const ta = commentTextareaRef.value
-  if (!ta) {
-    commentForm.value.content += char
-    return
-  }
-  const start = ta.selectionStart
-  const end = ta.selectionEnd
-  const val = commentForm.value.content
-  commentForm.value.content = val.slice(0, start) + char + val.slice(end)
-  nextTick(() => {
-    const pos = start + char.length
-    ta.setSelectionRange(pos, pos)
-    ta.focus()
-  })
-}
-
-/* 验证码 */
-const captcha = ref({ question: '', result: null })
-const captchaHover = ref(false)
-const captchaFocus = ref(false)
-const loadCaptcha = async () => {
-  try {
-    const res = await generateCaptcha()
-    captcha.value = res.data.data
-    // 刷新验证码后清空之前的验证码错误提示
-    errors.value.captcha = ''
-  } catch {
-    /* ignore */
-  }
-}
-
+let articleToken = 0
+let active = true
+let commentToken = 0
+let likeToken = 0
+const commentPage = ref(1)
+const commentTotal = ref(0)
+const commentError = ref('')
 const loadArticle = async (slug) => {
+  if (!active) return
+  const token = ++articleToken
+  ++commentToken
+  ++likeToken
+  comments.value = []
+  commentPage.value = 1
+  commentTotal.value = 0
+  liked.value = false
+  likeReady.value = false
+  liking.value = false
+  article.value = null
+  replyTarget.value = null
+  editingId.value = null
   loading.value = true
   try {
     const res = await getArticleBySlug(slug)
+    if (token !== articleToken) return
     article.value = res.data.data
     document.title = `${article.value.title} - DriftingLeaves`
     // 更新 Hero
@@ -134,157 +101,146 @@ const loadArticle = async (slug) => {
     const items = []
     if (article.value.publishTime)
       items.push(
-        `<span class="meta-item"><i class="iconfont icon-time"></i>${article.value.publishTime.slice(0, 16).replace('T', ' ')}</span>`
+        `${article.value.publishTime.slice(0, 16).replace('T', ' ')}`
       )
     if (article.value.viewCount != null)
       items.push(
-        `<span class="meta-item"><i class="iconfont icon-eye"></i>${article.value.viewCount} 浏览</span>`
+        `${article.value.viewCount} 浏览`
       )
     if (article.value.commentCount != null)
       items.push(
-        `<span class="meta-item"><i class="iconfont icon-pinglun"></i>${article.value.commentCount} 评论</span>`
+        `${article.value.commentCount} 评论`
       )
     if (article.value.categoryName)
       items.push(
-        `<span class="meta-item"><i class="iconfont icon-folder"></i>${article.value.categoryName}</span>`
+        `${article.value.categoryName}`
       )
     if (article.value.wordCount)
       items.push(
-        `<span class="meta-item"><i class="iconfont icon-guidang"></i>${article.value.wordCount} 字</span>`
+        `${article.value.wordCount} 字`
       )
     if (article.value.readingTime)
       items.push(
-        `<span class="meta-item"><i class="iconfont icon-time"></i>${article.value.readingTime} 分钟</span>`
+        `${article.value.readingTime} 分钟`
       )
-    articleMeta.value = items.join('<span class="meta-dot">·</span>')
+    articleMeta.value = items.join(' · ')
     loadComments()
     checkLike()
     loadCaptcha()
   } catch {
-    article.value = null
+    if (token === articleToken) article.value = null
   } finally {
-    loading.value = false
-    onContentRendered()
-    nextTick(updateReadingProgress)
+    if (token === articleToken) {
+      loading.value = false
+      onContentRendered()
+      nextTick(updateReadingProgress)
+    }
   }
 }
 
 const loadComments = async () => {
-  if (!article.value) return
+  if (!active) return
+  const id = article.value?.id
+  if (!id) return
+  const token = ++commentToken
   try {
-    const res = await getCommentTree(article.value.id, visitorStore.visitorId)
-    comments.value = res.data.data ?? []
+    await visitorStore.record().catch(() => {})
+    if (token !== commentToken) return
+    const res = await getCommentTree(id, commentPage.value)
+    if (token !== commentToken || article.value?.id !== id) return
+    comments.value = res.data.data.records ?? []
+    commentTotal.value = res.data.data.total ?? 0
+    commentError.value = ''
+    if (commentPage.value > 1 && !comments.value.length) {
+      commentPage.value--
+      loadComments()
+    }
   } catch {
-    comments.value = []
+    if (token === commentToken) commentError.value = '评论加载失败，请重试'
   }
 }
-
+const changeCommentPage = (page) => {
+  commentPage.value = page
+  loadComments()
+}
 const checkLike = async () => {
-  if (!article.value || !visitorStore.visitorId) return
+  if (!active || liking.value) return
+  const id = article.value?.id
+  if (!id) return
+  const token = ++likeToken
   try {
-    const res = await hasLiked(article.value.id, visitorStore.visitorId)
-    liked.value = res.data.data === true
+    await visitorStore.record()
+    if (token !== likeToken) return
+    const res = await hasLiked(id)
+    if (token === likeToken && article.value?.id === id) {
+      liked.value = res.data.data === true
+      likeReady.value = true
+    }
   } catch {
-    liked.value = false
+    // Reported by request layer; keep last confirmed state.
   }
 }
-
 const toggleLike = async () => {
-  if (!visitorStore.visitorId || liking.value) return
+  if (!active || !article.value || liking.value) return
+  if (!likeReady.value) return checkLike()
+  const id = article.value.id
+  const wasLiked = liked.value
+  const token = ++likeToken
   liking.value = true
   try {
-    if (liked.value) {
-      await unlikeArticle(article.value.id, visitorStore.visitorId)
-      liked.value = false
-      article.value.likeCount = Math.max(0, (article.value.likeCount ?? 1) - 1)
-    } else {
-      await likeArticle(article.value.id, visitorStore.visitorId)
-      liked.value = true
-      article.value.likeCount = (article.value.likeCount ?? 0) + 1
-    }
+    await visitorStore.record()
+    if (!active || token !== likeToken || article.value?.id !== id) return
+    await (wasLiked ? unlikeArticle(id) : likeArticle(id))
+    if (token !== likeToken || article.value?.id !== id) return
+    liked.value = !wasLiked
+    article.value.likeCount = Math.max(0, (article.value.likeCount ?? 0) + (wasLiked ? -1 : 1))
+  } catch {
+    // Preserve confirmed count on failure.
   } finally {
-    liking.value = false
+    if (token === likeToken) liking.value = false
   }
 }
 
 /* 评论操作 */
 
-// 单个字段失焦/即时校验
-const validateField = (field) => {
-  let result
-  switch (field) {
-    case 'nickname': {
-      // 允许使用本地访客缓存的昵称作为兜底
-      const nick = commentForm.value.nickname.trim() || visitorStore.nickname
-      result = isValidNickname(nick)
-      break
-    }
-    case 'content':
-      result = isValidContent(commentForm.value.content)
-      break
-    case 'emailOrQq':
-      result = isValidEmailOrQq(commentForm.value.emailOrQq)
-      break
-    case 'captcha':
-      result = isValidCaptcha(
-        commentForm.value.captchaAnswer,
-        captcha.value.result
-      )
-      break
-  }
-  errors.value[field] = result.valid ? '' : result.msg
-  return result.valid
-}
-
-// 提交前全量校验
-const validateForm = () => {
-  const fields = ['content', 'nickname', 'emailOrQq', 'captcha']
-  const valid = fields.map(validateField).every(Boolean)
-  if (!valid) {
-    ElMessage.warning('请检查表单填写是否正确')
-  }
-  return valid
-}
+const validateForm = () => validateDiscussion()
 
 const handleSubmitComment = async () => {
-  if (!validateForm()) return
-  const nick = commentForm.value.nickname.trim() || visitorStore.nickname
+  if (!active || submitting.value || !validateForm()) return
+  const id = article.value.id
+  const nick = commentForm.value.nickname.trim()
   const content = commentForm.value.content.trim()
   submitting.value = true
   try {
+    await visitorStore.record()
+    if (!active || article.value?.id !== id) return
     const payload = {
-      articleId: article.value.id,
-      rootId: replyTarget.value?.rootId ?? replyTarget.value?.id ?? null,
+      articleId: id,
+      captchaId: captcha.value.captchaId,
+      captchaAnswer: commentForm.value.captchaAnswer.trim(),
       parentId: replyTarget.value?.id ?? null,
-      parentNickname: replyTarget.value?.nickname ?? null,
       content: content,
       nickname: nick,
-      visitorId: visitorStore.visitorId,
       emailOrQq: commentForm.value.emailOrQq || '',
       isMarkdown: commentForm.value.isMarkdown ? 1 : 0,
       isSecret: commentForm.value.isSecret ? 1 : 0,
       isNotice: commentForm.value.isNotice ? 1 : 0
     }
     await submitComment(payload)
+    if (!active || article.value?.id !== id) return
     visitorStore.nickname = nick
     if (commentForm.value.emailOrQq)
       visitorStore.email = commentForm.value.emailOrQq
-    commentForm.value = {
-      nickname: nick,
-      emailOrQq: commentForm.value.emailOrQq,
-      content: '',
-      captchaAnswer: '',
-      isSecret: false,
-      isNotice: true,
-      isMarkdown: true
-    }
+    commentForm.value = discussionDefaults(nick, commentForm.value.emailOrQq)
     // 提交成功后清空校验提示
-    errors.value = { nickname: '', emailOrQq: '', content: '', captcha: '' }
+    errors.value = discussionErrors()
     replyTarget.value = null
     ElMessage.success('评论成功，审核通过后将展示')
     loadComments()
-    loadCaptcha()
+  } catch {
+    // Keep form contents on rejection.
   } finally {
+    loadCaptcha()
     submitting.value = false
   }
 }
@@ -294,12 +250,12 @@ const startReply = (c) => {
   commentForm.value.nickname = visitorStore.nickname
   commentForm.value.emailOrQq = visitorStore.email
   // 切换回复目标时清空历史校验提示
-  errors.value = { nickname: '', emailOrQq: '', content: '', captcha: '' }
+  errors.value = discussionErrors()
 }
 const cancelReply = () => {
   replyTarget.value = null
   // 取消回复时清空校验提示
-  errors.value = { nickname: '', emailOrQq: '', content: '', captcha: '' }
+  errors.value = discussionErrors()
 }
 
 const startEdit = (c) => {
@@ -311,15 +267,14 @@ const doEdit = async (c) => {
   try {
     await editComment({
       id: c.id,
-      visitorId: visitorStore.visitorId,
       content: editContent.value.trim(),
       isMarkdown: c.isMarkdown ?? 0
     })
     editingId.value = null
-    ElMessage.success('修改成功')
+    ElMessage.success('修改成功，需重新审核')
     loadComments()
   } catch {
-    ElMessage.error('修改失败')
+    // The request layer reports the error; preserve current input.
   }
 }
 const doDelete = async (c) => {
@@ -333,33 +288,18 @@ const doDelete = async (c) => {
     return // 用户取消
   }
   try {
-    await deleteComment(c.id, visitorStore.visitorId)
+    await deleteComment(c.id)
     ElMessage.success('删除成功')
     loadComments()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.msg || '删除失败')
+  } catch {
+    // The request layer reports the error; preserve current input.
   }
 }
 
-const fmtDate = (d) => (d ? d.slice(0, 16).replace('T', ' ') : '')
-const isOwn = (c) => c.visitorId && c.visitorId === visitorStore.visitorId
+const isOwn = (item) => item.isOwn === true
 
-/* 头像 */
-const getAvatarUrl = (c) => {
-  // 如果是博主回复，使用个人信息的头像
-  if (c.isAdminReply && blogStore.personalInfo?.avatar) {
-    return blogStore.personalInfo.avatar
-  }
-  const eq = c.emailOrQq
-  if (!eq) return ''
-  // 纯数字 → QQ号
-  if (/^\d{5,11}$/.test(eq)) return `https://q1.qlogo.cn/g?b=qq&nk=${eq}&s=640`
-  // @qq.com → 提取QQ号
-  const m = eq.match(/^(\d{5,11})@qq\.com$/i)
-  if (m) return `https://q1.qlogo.cn/g?b=qq&nk=${m[1]}&s=640`
-  return ''
-}
-const getInitial = (name) => (name ? name.charAt(0).toUpperCase() : '?')
+const getAvatarUrl = (item) => discussionAvatar(item, blogStore.personalInfo)
+const fmtDate = fmtDiscussionDate
 
 const copyLink = async () => {
   try {
@@ -370,17 +310,7 @@ const copyLink = async () => {
   }
 }
 
-const flatCommentCount = computed(() => {
-  let count = 0
-  const walk = (list) => {
-    list.forEach((c) => {
-      count++
-      if (c.children?.length) walk(c.children)
-    })
-  }
-  walk(comments.value)
-  return count
-})
+const flatCommentCount = computed(() => comments.value.reduce((total, node) => total + 1 + (node.children?.length || 0), 0))
 
 /* 文章内容：优先 MdPreview（需要 contentMarkdown），否则回退 v-html */
 const hasMarkdown = computed(() => !!article.value?.contentMarkdown?.trim())
@@ -417,7 +347,7 @@ const calculateReadingProgress = () => {
 }
 
 const updateReadingProgress = () => {
-  if (readingProgressFrame) return
+  if (!active || readingProgressFrame) return
 
   readingProgressFrame = window.requestAnimationFrame(() => {
     readingProgressFrame = 0
@@ -433,6 +363,11 @@ watch(
   }
 )
 
+watch(() => visitorStore.ready, (ready) => {
+  if (ready) { loadComments(); checkLike(); loadCaptcha() }
+  else { ++likeToken; liked.value = false; likeReady.value = false; liking.value = false }
+})
+
 onMounted(() => {
   commentForm.value.nickname = visitorStore.nickname
   commentForm.value.emailOrQq = visitorStore.email
@@ -443,6 +378,10 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  active = false
+  ++articleToken
+  ++commentToken
+  ++likeToken
   window.removeEventListener('scroll', updateReadingProgress)
   window.removeEventListener('resize', updateReadingProgress)
   if (readingProgressFrame) {
@@ -511,8 +450,15 @@ onUnmounted(() => {
               <div
                 class="like-wrapper"
                 :class="{ liked }"
+                role="button"
+                tabindex="0"
+                :aria-pressed="liked"
+                :aria-label="likeReady ? (liked ? '取消点赞' : '点赞') : '重新读取点赞状态'"
+                :aria-disabled="liking"
+                @keydown.enter.prevent="toggleLike"
+                @keydown.space.prevent="toggleLike"
                 @click="toggleLike"
-                title="点赞"
+                :title="likeReady ? '点赞' : '读取点赞状态，失败可点击重试'"
               >
                 <div class="svg-container">
                   <svg
@@ -594,7 +540,7 @@ onUnmounted(() => {
           <!-- 评论区 -->
           <div class="comment-card">
             <h3 class="section-title">
-              <i class="iconfont icon-pinglun" /> 评论 ({{ flatCommentCount }})
+              <i class="iconfont icon-pinglun" /> 评论 ({{ commentTotal }} 条主评论，本页含回复 {{ flatCommentCount }} 条)
             </h3>
 
             <div class="comment-form">
@@ -606,6 +552,7 @@ onUnmounted(() => {
                 <textarea
                   ref="commentTextareaRef"
                   v-model="commentForm.content"
+                  aria-label="评论正文"
                   placeholder="写下你的想法..."
                   :class="[
                     'form-textarea',
@@ -630,6 +577,7 @@ onUnmounted(() => {
                     <i class="iconfont icon-user input-icon" />
                     <input
                       v-model="commentForm.nickname"
+                      aria-label="评论昵称"
                       placeholder="昵称 *"
                       :class="[
                         'form-input',
@@ -647,6 +595,7 @@ onUnmounted(() => {
                     <i class="iconfont icon-youxiang input-icon" />
                     <input
                       v-model="commentForm.emailOrQq"
+                      aria-label="评论邮箱或 QQ 号"
                       placeholder="邮箱/QQ号"
                       :class="[
                         'form-input',
@@ -668,6 +617,7 @@ onUnmounted(() => {
                     <i class="iconfont icon-lock input-icon" />
                     <input
                       v-model="commentForm.captchaAnswer"
+                      :aria-label="`验证码，${captcha.question}`"
                       placeholder="验证码"
                       :class="[
                         'form-input',
@@ -691,6 +641,10 @@ onUnmounted(() => {
                     </span>
                     <span
                       class="captcha-refresh"
+                      role="button"
+                      tabindex="0"
+                      @keydown.enter.prevent="loadCaptcha"
+                      @keydown.space.prevent="loadCaptcha"
                       @click="loadCaptcha"
                       title="换一题"
                       >↻</span
@@ -801,7 +755,7 @@ onUnmounted(() => {
                       <span class="c-date">{{ fmtDate(c.createTime) }}</span>
                     </div>
                     <div v-if="editingId === c.id" class="c-edit-wrap">
-                      <input v-model="editContent" class="form-input" />
+                      <input v-model="editContent" aria-label="修改评论正文" class="form-input" />
                       <button class="inline-btn" @click="doEdit(c)">
                         保存
                       </button>
@@ -918,7 +872,7 @@ onUnmounted(() => {
                             v-if="editingId === child.id"
                             class="c-edit-wrap"
                           >
-                            <input v-model="editContent" class="form-input" />
+                            <input v-model="editContent" aria-label="修改回复正文" class="form-input" />
                             <button class="inline-btn" @click="doEdit(child)">
                               保存
                             </button>
@@ -951,7 +905,9 @@ onUnmounted(() => {
                   </div>
                 </div>
               </template>
-              <div v-if="!comments.length" class="empty-comment">
+              <p v-if="commentError" role="alert">{{ commentError }} <button type="button" @click="loadComments">重试</button></p>
+              <el-pagination v-if="commentTotal > 10" :current-page="commentPage" :page-size="10" :total="commentTotal" layout="prev, pager, next" @current-change="changeCommentPage" />
+              <div v-if="!comments.length && !commentError" class="empty-comment">
                 暂无评论，来抢沙发
               </div>
             </div>

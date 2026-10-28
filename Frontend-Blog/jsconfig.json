@@ -1,8 +1,16 @@
 {
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@shared/*": [
+        "../Frontend-Shared/*"
+      ]
     }
   },
-  "exclude": ["node_modules", "Blog"]
+  "exclude": [
+    "node_modules",
+    "Blog"
+  ]
 }

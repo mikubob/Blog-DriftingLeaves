@@ -1,11 +1,17 @@
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, onUnmounted } from 'vue'
 import { getPersonalInfo } from '@/api/personalInfo'
 import { getExperiences } from '@/api/experience'
 import { getSkills } from '@/api/skill'
 import { recordVisitor } from '@/api/visitor'
+import { useVisitorSession } from '@shared/useVisitorSession.mjs'
+import { safeLink } from '@shared/links.mjs'
+
+/** 简历展示负责独立数据区重试、系统主题、滚入观察器与打印；访客记录随页面存活。 */
+const { record: retryVisitor, error: visitorError } = useVisitorSession(recordVisitor)
 
 /* ============ 数据 ============ */
+const loadError = ref('')
 const info = ref({})
 const experiences = ref([])
 const skills = ref([])
@@ -18,14 +24,19 @@ const projects = computed(() => experiences.value.filter((e) => e.type === 2))
 
 /* ============ 暗黑模式 ============ */
 const isDark = ref(false)
+let themeQuery = null
+let themeListener = null
+let active = true
 const initTheme = () => {
   const mq = window.matchMedia('(prefers-color-scheme: dark)')
+  themeQuery = mq
   isDark.value = mq.matches
   applyTheme()
-  mq.addEventListener('change', (e) => {
+  themeListener = (e) => {
     isDark.value = e.matches
     applyTheme()
-  })
+  }
+  mq.addEventListener('change', themeListener)
 }
 const applyTheme = () => {
   document.documentElement.setAttribute(
@@ -46,8 +57,11 @@ const dateRange = (e) => `${fmtDate(e.startDate)} ~ ${fmtDate(e.endDate)}`
 const printPage = () => window.print()
 
 /* ============ 滚入动画 ============ */
+let observer = null
 const observeSections = () => {
-  const observer = new IntersectionObserver(
+  if (!active) return
+  observer?.disconnect()
+  observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
@@ -64,31 +78,47 @@ const observeSections = () => {
 }
 
 /* ============ 初始化 ============ */
-onMounted(async () => {
-  initTheme()
-  try {
-    const [infoRes, expRes, skillRes] = await Promise.all([
-      getPersonalInfo(),
-      getExperiences(),
-      getSkills()
-    ])
-    info.value = infoRes.data.data ?? {}
-    experiences.value = expRes.data.data ?? []
-    skills.value = skillRes.data.data ?? []
-  } catch (e) {
-    console.error('数据加载失败', e)
-  }
+let pendingData = null
+const initialized = new Set()
+const controller = new AbortController()
+/** 同时读取独立模块；成功模块保留，重试只请求失败模块，卸载后不写回。 */
+const fetchData = () => {
+  if (!active) return Promise.resolve()
+  if (pendingData) return pendingData
+  const sources = [[info, getPersonalInfo, {}], [experiences, getExperiences, []], [skills, getSkills, []]]
+  pendingData = (async () => {
+  const results = await Promise.allSettled(sources.map(async ([target, fetch, fallback]) => {
+      if (initialized.has(target)) return
+      const res = await fetch({ signal: controller.signal })
+      if (!active) return
+      target.value = res.data.data ?? fallback
+      initialized.add(target)
+    }))
+  if (!active) return
+  loadError.value = results.some((result) => result.status === 'rejected') ? '部分数据加载失败，请重试' : ''
   loaded.value = true
   await nextTick()
   observeSections()
+  })().finally(() => { pendingData = null })
+  return pendingData
+}
+onMounted(async () => {
+  initTheme()
+  await fetchData()
+})
 
-  // 异步记录访客
-  recordVisitor().catch(() => {})
+onUnmounted(() => {
+  active = false
+  controller.abort()
+  themeQuery?.removeEventListener('change', themeListener)
+  observer?.disconnect()
 })
 </script>
 
 <template>
   <div v-if="loaded" class="cv-page">
+    <p v-if="visitorError" role="alert">{{ visitorError }} <button type="button" @click="retryVisitor">重试</button></p>
+    <p v-if="loadError" role="alert">{{ loadError }} <button type="button" @click="fetchData">重试</button></p>
     <!-- 打印按钮 -->
     <button
       class="print-btn no-print"
@@ -137,7 +167,7 @@ onMounted(async () => {
               d="M12 .3a12 12 0 00-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.5 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.12-3.18 0 0 1-.33 3.3 1.23a11.5 11.5 0 016.02 0c2.28-1.56 3.29-1.23 3.29-1.23.66 1.66.25 2.88.12 3.18a4.65 4.65 0 011.23 3.22c0 4.61-2.81 5.63-5.48 5.93.43.37.81 1.1.81 2.22l-.01 3.29c0 .31.22.69.83.57A12 12 0 0012 .3"
             />
           </svg>
-          <a :href="info.github" target="_blank" rel="noopener">{{
+          <a :href="safeLink(info.github)" target="_blank" rel="noopener">{{
             info.github.replace(/^https?:\/\/(www\.)?github\.com\//, '')
           }}</a>
         </li>
@@ -157,9 +187,9 @@ onMounted(async () => {
           </svg>
           <a
             :href="
-              info.website.match(/^https?:\/\//)
+              safeLink(info.website.match(/^https?:\/\//)
                 ? info.website
-                : 'https://' + info.website
+                : 'https://' + info.website)
             "
             target="_blank"
             rel="noopener"

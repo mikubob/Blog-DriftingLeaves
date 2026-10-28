@@ -2,33 +2,32 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import {
   getCommentPage,
-  approveComments,
-  deleteComments,
-  replyComment
 } from '@/api/comment'
 
+/** comment 页面共享列表状态；只应用最新读取响应，失败由请求层提示并保留上次成功数据。变更直接使用 API，由页面负责刷新。 */
 export const useCommentStore = defineStore('comment', () => {
   const list = ref([])
   const total = ref(0)
   const loading = ref(false)
 
+  let fetchListToken = 0
   /**
    * @param {{ page: number, pageSize: number, articleId?: number, isApproved?: number }} query
    */
   const fetchList = async (query) => {
+    const token = ++fetchListToken
     loading.value = true
     try {
       const res = await getCommentPage(query)
+      if (token !== fetchListToken) return
       list.value = res.data?.records || []
       total.value = res.data?.total || 0
+    } catch {
+      // The request layer reports failed reads; keep the last successful data.
     } finally {
-      loading.value = false
+      if (token === fetchListToken) loading.value = false
     }
   }
 
-  const approve = async (ids) => await approveComments(ids)
-  const remove = async (ids) => await deleteComments(ids)
-  const reply = async (data) => await replyComment(data)
-
-  return { list, total, loading, fetchList, approve, remove, reply }
+  return { list, total, loading, fetchList }
 })

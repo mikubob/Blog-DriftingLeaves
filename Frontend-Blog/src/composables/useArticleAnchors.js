@@ -1,7 +1,13 @@
 import { nextTick, onBeforeUnmount, onMounted } from 'vue'
 import { ensureHeadingIds, findFragmentTarget } from '@/utils/markdownAnchors'
 
+/**
+ * 文章内容渲染后补齐锚点并恢复 URL 片段；保留原生片段历史和键盘链接行为。
+ * @param {import('vue').Ref<HTMLElement|null>} contentRef 当前文章容器
+ * @returns {{onContentRendered: Function, onAnchorClick: Function}} 渲染后回调与捕获点击处理
+ */
 export const useArticleAnchors = (contentRef) => {
+  let active = true
   const scrollToFragment = (hash, behavior = 'smooth') => {
     const target = findFragmentTarget(contentRef.value, hash)
     if (!target) return false
@@ -13,6 +19,7 @@ export const useArticleAnchors = (contentRef) => {
 
   const onContentRendered = async () => {
     await nextTick()
+    if (!active) return
     ensureHeadingIds(contentRef.value)
     restoreFragment()
   }
@@ -37,9 +44,10 @@ export const useArticleAnchors = (contentRef) => {
   }
 
   onMounted(() => window.addEventListener('hashchange', restoreFragment))
-  onBeforeUnmount(() =>
+  onBeforeUnmount(() => {
+    active = false
     window.removeEventListener('hashchange', restoreFragment)
-  )
+  })
 
   return { onContentRendered, onAnchorClick }
 }

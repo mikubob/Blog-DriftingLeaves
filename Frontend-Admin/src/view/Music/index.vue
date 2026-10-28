@@ -1,4 +1,5 @@
 <script setup>
+import { deleteMusics } from '@/api/music'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useMusicStore } from '@/stores'
 import { uploadFile } from '@/api/settings'
@@ -108,9 +109,7 @@ const openDialog = (row = null) => {
 const handleCoverUpload = async (options) => {
   uploadingCover.value = true
   try {
-    const fd = new FormData()
-    fd.append('file', options.file)
-    const res = await uploadFile(fd)
+    const res = await uploadFile(options.file)
     form.value.coverImage = res.data
     ElMessage.success('封面上传成功')
   } finally {
@@ -122,9 +121,7 @@ const handleCoverUpload = async (options) => {
 const handleAudioUpload = async (options) => {
   uploadingAudio.value = true
   try {
-    const fd = new FormData()
-    fd.append('file', options.file)
-    const res = await uploadFile(fd)
+    const res = await uploadFile(options.file)
     form.value.musicUrl = res.data
     form.value.hasLyric = form.value.musicUrl ? form.value.hasLyric : 0
     ElMessage.success('音频上传成功')
@@ -137,9 +134,7 @@ const handleAudioUpload = async (options) => {
 const handleLyricUpload = async (options) => {
   uploadingLyric.value = true
   try {
-    const fd = new FormData()
-    fd.append('file', options.file)
-    const res = await uploadFile(fd)
+    const res = await uploadFile(options.file)
     form.value.lyricUrl = res.data
     form.value.hasLyric = 1
     ElMessage.success('歌词上传成功')
@@ -192,24 +187,24 @@ const handleSave = async () => {
 
 /* ---- 删除 ---- */
 const deleteOne = async (row) => {
-  await ElMessageBox.confirm(`确认删除「${row.title}」？`, '警告', {
+  if (!await ElMessageBox.confirm(`确认删除「${row.title}」？`, '警告', {
     confirmButtonText: '删除',
     cancelButtonText: '取消',
     type: 'warning'
-  })
-  await musicStore.remove([row.id])
+  }).then(() => true, () => false)) return
+  await deleteMusics([row.id])
   ElMessage.success('删除成功')
   load()
 }
 
 const batchDelete = async () => {
   if (!selected.value.length) return ElMessage.warning('请先选择音乐')
-  await ElMessageBox.confirm(
+  if (!await ElMessageBox.confirm(
     `确认删除选中的 ${selected.value.length} 首音乐？`,
     '警告',
     { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
-  )
-  await musicStore.remove(selected.value.map((r) => r.id))
+  ).then(() => true, () => false)) return
+  await deleteMusics(selected.value.map((r) => r.id))
   clearSelection()
   ElMessage.success('批量删除成功')
   load()

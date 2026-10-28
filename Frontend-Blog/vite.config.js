@@ -51,9 +51,11 @@ const markdownPreviewPackages = new Set([
 // https://vite.dev/config/
 export default defineConfig({
   server: {
+    fs: { allow: [fileURLToPath(new URL('.', import.meta.url)), fileURLToPath(new URL('../Frontend-Shared', import.meta.url))] },
     proxy: {
       '/api': {
         target: 'http://localhost:5922',
+        ws: true,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
       }
@@ -88,7 +90,9 @@ export default defineConfig({
     })
   ],
   resolve: {
+    dedupe: ['vue'],
     alias: {
+      '@shared': fileURLToPath(new URL('../Frontend-Shared', import.meta.url)),
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },

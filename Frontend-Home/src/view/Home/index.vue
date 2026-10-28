@@ -1,9 +1,14 @@
 <script setup>
-import { onMounted, ref, watch, nextTick } from 'vue'
+import { onMounted, ref, watch, nextTick, onUnmounted } from 'vue'
 import { getSocialMedia } from '@/api/socialMedia'
 import { getPersonalInfo } from '@/api/personalInfo'
 import { recordVisitor } from '@/api/visitor'
 import { getSystemConfig } from '@/api/systemConfig'
+import { useVisitorSession } from '@shared/useVisitorSession.mjs'
+import { safeLink } from '@shared/links.mjs'
+
+/** 门户展示负责模块重试、主题监听与局部链接动画；访客生命周期由 composable 管理。 */
+const { record: retryVisitor, error: visitorError } = useVisitorSession(recordVisitor)
 
 // 网站创建年份
 const startYear = ref(0)
@@ -11,6 +16,7 @@ const startYear = ref(0)
 const currentYear = ref(0)
 
 // 个人信息
+const loadError = ref('')
 const personalInfo = ref({})
 // 社交媒体信息
 const socialMedia = ref([])
@@ -31,11 +37,6 @@ onMounted(async () => {
   // 获取数据
   await fetchData()
 
-  // 记录访客（异步，不阻塞页面渲染）
-  recordVisitor().catch((err) => {
-    console.error('访客记录失败:', err)
-  })
-
   // 数据加载完成后设置链接动画
   await nextTick()
   setupLinkAnimations()
@@ -45,6 +46,9 @@ onMounted(async () => {
 const isDarkMode = ref(false)
 
 // 初始化主题检测
+let themeQuery = null
+let themeListener = null
+let active = true
 const initTheme = () => {
   // 检测系统主题偏好
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -52,13 +56,9 @@ const initTheme = () => {
   // 立即应用主题
   applyTheme()
 
-  // 监听系统主题变化
-  window
-    .matchMedia('(prefers-color-scheme: dark)')
-    .addEventListener('change', (e) => {
-      isDarkMode.value = e.matches
-      applyTheme()
-    })
+  themeQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  themeListener = (e) => { isDarkMode.value = e.matches; applyTheme() }
+  themeQuery.addEventListener('change', themeListener)
 }
 
 // 应用主题样式
@@ -84,37 +84,40 @@ const applyTheme = () => {
   }
 }
 
-// 获取数据
-const fetchData = async () => {
-  try {
-    // 并行请求数据
-    const [personalRes, socialRes, icpRes, gonganRes, startTimeRes] =
-      await Promise.all([
-        getPersonalInfo(),
-        getSocialMedia(),
-        getSystemConfig('icp-beian'),
-        getSystemConfig('gongan-beian'),
-        getSystemConfig('start-time')
-      ])
-    personalInfo.value = personalRes.data.data || {}
-    socialMedia.value = (socialRes.data.data || []).sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
-    icpBeian.value = icpRes?.data?.data?.configValue || ''
-    gonganBeian.value = gonganRes?.data?.data?.configValue || ''
-    startYear.value = startTimeRes?.data?.data?.configValue.split('-')[0]
-      ? parseInt(startTimeRes.data.data.configValue.split('-')[0])
-      : startYear.value
+let pendingData = null
+const initialized = new Set()
+const controller = new AbortController()
+/** 并行读取各区，复用在途请求；成功区不随失败区重试，卸载时取消并停止写回。 */
+const fetchData = () => {
+  if (!active) return Promise.resolve()
+  if (pendingData) return pendingData
+  const config = { signal: controller.signal }
+  const sources = [
+    [personalInfo, () => getPersonalInfo(config), (data) => data || {}],
+    [socialMedia, () => getSocialMedia(config), (data) => (data || []).sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))],
+    [icpBeian, () => getSystemConfig('icp-beian', config), (data) => data?.configValue || ''],
+    [gonganBeian, () => getSystemConfig('gongan-beian', config), (data) => data?.configValue || ''],
+    [startYear, () => getSystemConfig('start-time', config), (data) => data?.configValue?.split('-')[0] || 0]
+  ]
+  pendingData = Promise.allSettled(sources.map(async ([target, fetch, read]) => {
+    if (initialized.has(target)) return
+    const res = await fetch()
+    if (!active) return
+    target.value = read(res.data.data)
+    initialized.add(target)
+  })).then((results) => {
+    if (!active) return
+    loadError.value = results.some((result) => result.status === 'rejected') ? '部分数据加载失败，请重试' : ''
     isDataLoaded.value = true
-  } catch (error) {
-    console.error('数据获取失败:', error)
-    socialMedia.value = []
-    isDataLoaded.value = true
-  }
+  }).finally(() => { pendingData = null })
+  return pendingData
 }
 
 // 设置链接动画延迟
 const setupLinkAnimations = () => {
   // 等待DOM更新完成
   nextTick(() => {
+    if (!active) return
     const links = document.querySelectorAll('.link')
     links.forEach((link, index) => {
       link.style.setProperty('--link-index', index + 1)
@@ -128,10 +131,17 @@ watch([() => socialMedia.value, isDataLoaded], () => {
     setupLinkAnimations()
   }
 })
+onUnmounted(() => {
+  active = false
+  controller.abort()
+  themeQuery?.removeEventListener('change', themeListener)
+})
 </script>
 
 <template>
   <div class="home-container">
+    <p v-if="visitorError" role="alert">{{ visitorError }} <button type="button" @click="retryVisitor">重试</button></p>
+    <p v-if="loadError" role="alert">{{ loadError }} <button type="button" @click="fetchData">重试</button></p>
     <main class="card" role="main">
       <!-- 头像 -->
       <div class="avatar-container">
@@ -150,8 +160,9 @@ watch([() => socialMedia.value, isDataLoaded], () => {
           v-for="item in socialMedia"
           :key="item.id"
           class="link"
-          :href="item.link"
+          :href="safeLink(item.link)"
           target="_blank"
+          rel="noopener noreferrer"
           :title="item.name"
         >
           <img v-if="item.icon" :src="item.icon" class="social-icon" :alt="item.name" />

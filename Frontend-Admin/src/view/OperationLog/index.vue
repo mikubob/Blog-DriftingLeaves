@@ -67,11 +67,11 @@ const handleSizeChange = (s) => {
 
 /* ---- 删除 ---- */
 const deleteOne = async (row) => {
-  await ElMessageBox.confirm('确认删除该条操作日志？', '警告', {
+  if (!await ElMessageBox.confirm('确认删除该条操作日志？', '警告', {
     confirmButtonText: '删除',
     cancelButtonText: '取消',
     type: 'warning'
-  })
+  }).then(() => true, () => false)) return
   await logStore.remove([row.id])
   ElMessage.success('删除成功')
   load()
@@ -79,11 +79,11 @@ const deleteOne = async (row) => {
 
 const batchDelete = async () => {
   if (!selected.value.length) return ElMessage.warning('请先选择日志')
-  await ElMessageBox.confirm(
+  if (!await ElMessageBox.confirm(
     `确认删除选中的 ${selected.value.length} 条日志？`,
     '警告',
     { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
-  )
+  ).then(() => true, () => false)) return
   await logStore.remove(selected.value.map((r) => r.id))
   clearSelection()
   ElMessage.success('批量删除成功')

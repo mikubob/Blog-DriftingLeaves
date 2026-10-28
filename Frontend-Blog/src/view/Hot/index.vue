@@ -1,5 +1,5 @@
 <script setup>
-import { ref, inject, onMounted, watch } from 'vue'
+import { ref, inject, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   getMonthHotArticlesByLike,
@@ -19,7 +19,9 @@ const loading = ref(false)
 
 const fmtDate = (d) => (d ? d.slice(0, 10).replace('T', ' ') : '')
 
+let requestToken = 0
 const loadHotArticles = async () => {
+  const token = ++requestToken
   loading.value = true
   try {
     const apiMap = {
@@ -34,11 +36,12 @@ const loadHotArticles = async () => {
     }
     const api = apiMap[activeScope.value][activeMetric.value]
     const res = await api()
+    if (token !== requestToken) return
     hotArticles.value = res.data.data ?? []
   } catch {
-    hotArticles.value = []
+    // Keep the last successful result.
   } finally {
-    loading.value = false
+    if (token === requestToken) loading.value = false
   }
 }
 
@@ -51,6 +54,7 @@ onMounted(() => {
   articleMeta.value = '网站流量TOP'
   loadHotArticles()
 })
+onUnmounted(() => { ++requestToken })
 </script>
 
 <template>

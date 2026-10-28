@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   getConfigList,
   createConfig,
@@ -10,13 +11,16 @@ import {
   changePassword,
   changeNickname,
   changeEmail,
-  sendCode
+  sendChangeEmailCode
 } from '@/api/auth'
 import { useUserStore } from '@/stores'
 import { useBatchSelection } from '@/composables/useBatchSelection'
 
 /* ---- Tab ---- */
+/** 设置表单与倒计时仅随页面存活；发送完成后再次检查卸载状态。 */
+let active = true
 const activeTab = ref('config')
+const router = useRouter()
 
 /* ---- 系统配置 ---- */
 const configs = ref([])
@@ -45,6 +49,8 @@ const fetchConfigs = async () => {
   try {
     const res = await getConfigList()
     configs.value = res.data ?? []
+  } catch {
+    // Reported by the request layer.
   } finally {
     loadingConfig.value = false
   }
@@ -84,11 +90,11 @@ const saveConfig = async () => {
 }
 
 const deleteConfig = async (row) => {
-  await ElMessageBox.confirm(`确认删除配置「${row.configKey}」？`, '警告', {
+  if (!await ElMessageBox.confirm(`确认删除配置「${row.configKey}」？`, '警告', {
     confirmButtonText: '删除',
     cancelButtonText: '取消',
     type: 'warning'
-  })
+  }).then(() => true, () => false)) return
   await deleteConfigs([row.id])
   ElMessage.success('删除成功')
   fetchConfigs()
@@ -96,11 +102,11 @@ const deleteConfig = async (row) => {
 
 const batchDeleteConfig = async () => {
   if (!selected.value.length) return ElMessage.warning('请先选择配置')
-  await ElMessageBox.confirm(
+  if (!await ElMessageBox.confirm(
     `确认删除选中的 ${selected.value.length} 条配置？`,
     '警告',
     { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
-  )
+  ).then(() => true, () => false)) return
   await deleteConfigs(selected.value.map((r) => r.id))
   clearSelection()
   ElMessage.success('批量删除成功')
@@ -127,12 +133,16 @@ const handleChangePassword = async () => {
   if (pwdForm.value.newPassword !== pwdForm.value.confirmNewPassword) {
     return ElMessage.warning('两次新密码输入不一致')
   }
+  if ([pwdForm.value.oldPassword, pwdForm.value.newPassword].some((value) => value.length < 6 || value.length > 32)) {
+    return ElMessage.warning('密码长度应在 6-32 个字符之间')
+  }
   savingPwd.value = true
   try {
     await changePassword({ ...pwdForm.value })
     ElMessage.success('密码修改成功，即将退出登录')
     const userStore = useUserStore()
-    await userStore.logoutAction()
+    userStore.clearUserInfo()
+    await router.replace('/login')
   } finally {
     savingPwd.value = false
   }
@@ -164,11 +174,11 @@ const emailCountdown = ref(60)
 let emailTimer = null
 
 const sendEmailCode = async () => {
-  const { useUserStore } = await import('@/stores')
-  const userStore = useUserStore()
+  if (sendingEmailCode.value || emailCounting.value) return
   sendingEmailCode.value = true
   try {
-    await sendCode({ username: userStore.userInfo?.username ?? '' })
+    await sendChangeEmailCode()
+    if (!active) return
     ElMessage.success('验证码已发送')
     emailCounting.value = true
     emailCountdown.value = 60
@@ -197,6 +207,7 @@ const handleChangeEmail = async () => {
     savingEmail.value = false
   }
 }
+onUnmounted(() => { active = false; clearInterval(emailTimer) })
 </script>
 
 <template>

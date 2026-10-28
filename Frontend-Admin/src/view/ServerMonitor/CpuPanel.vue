@@ -1,5 +1,6 @@
 <script setup>
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { ref } from 'vue'
+import { useChart } from './useChart'
 import * as echarts from 'echarts/core'
 import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
@@ -8,6 +9,7 @@ import { formatPercent, safeValue } from './utils'
 
 echarts.use([BarChart, GridComponent, TooltipComponent, CanvasRenderer])
 
+/** 输入 CPU 快照、部署模式和进程列；不请求数据，柱状图由 useChart 随挂载更新和销毁。 */
 const props = defineProps({
   detail: {
     type: Object,
@@ -24,10 +26,9 @@ const props = defineProps({
 })
 
 const chartEl = ref(null)
-let chart = null
 
-function renderChart() {
-  if (!chart) return
+
+function renderChart(chart) {
   const coreUsages = Array.isArray(props.detail.coreUsages)
     ? props.detail.coreUsages
     : []
@@ -65,30 +66,7 @@ function renderChart() {
   })
 }
 
-function resizeChart() {
-  chart?.resize()
-}
-
-watch(
-  () => props.detail,
-  () => nextTick(renderChart),
-  { deep: true }
-)
-
-onMounted(async () => {
-  await nextTick()
-  if (chartEl.value) {
-    chart = echarts.init(chartEl.value)
-    renderChart()
-  }
-  window.addEventListener('resize', resizeChart)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', resizeChart)
-  chart?.dispose()
-  chart = null
-})
+useChart(chartEl, () => props.detail, renderChart)
 </script>
 
 <template>

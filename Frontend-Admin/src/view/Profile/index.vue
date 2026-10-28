@@ -1,4 +1,8 @@
 <script setup>
+import { safeLink } from '@shared/links.mjs'
+import { deleteSocialMedias } from '@/api/socialMedia'
+import { deleteSkills } from '@/api/skill'
+import { deleteExperiences } from '@/api/experience'
 import { ref, onMounted } from 'vue'
 import { useProfileStore } from '@/stores'
 import { getPersonalInfo, updatePersonalInfo, uploadFile } from '@/api/settings'
@@ -37,9 +41,7 @@ const fetchPersonal = async () => {
 }
 
 const handleAvatarUpload = async (options) => {
-  const fd = new FormData()
-  fd.append('file', options.file)
-  const res = await uploadFile(fd)
+  const res = await uploadFile(options.file)
   personalForm.value.avatar = res.data
   ElMessage.success('头像上传成功')
 }
@@ -74,9 +76,7 @@ const {
 const handleLogoUpload = async (options) => {
   uploadingLogo.value = true
   try {
-    const fd = new FormData()
-    fd.append('file', options.file)
-    const res = await uploadFile(fd)
+    const res = await uploadFile(options.file)
     expForm.value.logoUrl = res.data
     ElMessage.success('上传成功')
   } finally {
@@ -89,9 +89,7 @@ const uploadingSkillIcon = ref(false)
 const handleSkillIconUpload = async (options) => {
   uploadingSkillIcon.value = true
   try {
-    const fd = new FormData()
-    fd.append('file', options.file)
-    const res = await uploadFile(fd)
+    const res = await uploadFile(options.file)
     skillForm.value.icon = res.data
     ElMessage.success('上传成功')
   } finally {
@@ -104,9 +102,7 @@ const uploadingSocialIcon = ref(false)
 const handleSocialIconUpload = async (options) => {
   uploadingSocialIcon.value = true
   try {
-    const fd = new FormData()
-    fd.append('file', options.file)
-    const res = await uploadFile(fd)
+    const res = await uploadFile(options.file)
     socialForm.value.icon = res.data
     ElMessage.success('上传成功')
   } finally {
@@ -176,24 +172,24 @@ const handleExpSave = async () => {
 }
 
 const deleteExp = async (row) => {
-  await ElMessageBox.confirm(`确认删除「${row.title}」？`, '警告', {
+  if (!await ElMessageBox.confirm(`确认删除「${row.title}」？`, '警告', {
     confirmButtonText: '删除',
     cancelButtonText: '取消',
     type: 'warning'
-  })
-  await profileStore.removeExperiences([row.id])
+  }).then(() => true, () => false)) return
+  await deleteExperiences([row.id])
   ElMessage.success('删除成功')
   loadExperiences()
 }
 
 const batchDeleteExp = async () => {
   if (!expSelected.value.length) return ElMessage.warning('请先选择经历')
-  await ElMessageBox.confirm(
+  if (!await ElMessageBox.confirm(
     `确认删除选中的 ${expSelected.value.length} 条经历？`,
     '警告',
     { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
-  )
-  await profileStore.removeExperiences(expSelected.value.map((r) => r.id))
+  ).then(() => true, () => false)) return
+  await deleteExperiences(expSelected.value.map((r) => r.id))
   clearExpSelection()
   ElMessage.success('批量删除成功')
   loadExperiences()
@@ -265,24 +261,24 @@ const handleSkillSave = async () => {
 }
 
 const deleteSkill = async (row) => {
-  await ElMessageBox.confirm(`确认删除技能「${row.name}」？`, '警告', {
+  if (!await ElMessageBox.confirm(`确认删除技能「${row.name}」？`, '警告', {
     confirmButtonText: '删除',
     cancelButtonText: '取消',
     type: 'warning'
-  })
-  await profileStore.removeSkills([row.id])
+  }).then(() => true, () => false)) return
+  await deleteSkills([row.id])
   ElMessage.success('删除成功')
   profileStore.fetchSkills()
 }
 
 const batchDeleteSkill = async () => {
   if (!skillSelected.value.length) return ElMessage.warning('请先选择技能')
-  await ElMessageBox.confirm(
+  if (!await ElMessageBox.confirm(
     `确认删除选中的 ${skillSelected.value.length} 条技能？`,
     '警告',
     { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
-  )
-  await profileStore.removeSkills(skillSelected.value.map((r) => r.id))
+  ).then(() => true, () => false)) return
+  await deleteSkills(skillSelected.value.map((r) => r.id))
   clearSkillSelection()
   ElMessage.success('批量删除成功')
   profileStore.fetchSkills()
@@ -348,24 +344,24 @@ const handleSocialSave = async () => {
 }
 
 const deleteSocial = async (row) => {
-  await ElMessageBox.confirm(`确认删除「${row.name}」？`, '警告', {
+  if (!await ElMessageBox.confirm(`确认删除「${row.name}」？`, '警告', {
     confirmButtonText: '删除',
     cancelButtonText: '取消',
     type: 'warning'
-  })
-  await profileStore.removeSocialMedias([row.id])
+  }).then(() => true, () => false)) return
+  await deleteSocialMedias([row.id])
   ElMessage.success('删除成功')
   profileStore.fetchSocialMedias()
 }
 
 const batchDeleteSocial = async () => {
   if (!socialSelected.value.length) return ElMessage.warning('请先选择社交媒体')
-  await ElMessageBox.confirm(
+  if (!await ElMessageBox.confirm(
     `确认删除选中的 ${socialSelected.value.length} 条社交媒体？`,
     '警告',
     { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
-  )
-  await profileStore.removeSocialMedias(socialSelected.value.map((r) => r.id))
+  ).then(() => true, () => false)) return
+  await deleteSocialMedias(socialSelected.value.map((r) => r.id))
   clearSocialSelection()
   ElMessage.success('批量删除成功')
   profileStore.fetchSocialMedias()
@@ -382,7 +378,7 @@ const experienceTypeClass = (type) => {
 
 /* ---- 初始化 ---- */
 onMounted(() => {
-  fetchPersonal()
+  fetchPersonal().catch(() => {})
   loadExperiences()
   profileStore.fetchSkills()
   profileStore.fetchSocialMedias()
@@ -701,7 +697,7 @@ onMounted(() => {
           <el-table-column label="链接" min-width="260">
             <template #default="{ row }">
               <a
-                :href="row.link"
+                :href="safeLink(row.link)"
                 target="_blank"
                 rel="noopener"
                 class="link-href"

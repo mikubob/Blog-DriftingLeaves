@@ -1,10 +1,12 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useSiteRuntime } from '@/composables/useSiteRuntime'
 import { getConfigByKey } from '@/api/systemConfig'
 
 const icpBeian = ref('')
 const gonganBeian = ref('')
-const startYear = ref('')
+const { startTime, fetchRunDays } = useSiteRuntime()
+const startYear = computed(() => startTime.value.split('-')[0])
 const currentYear = new Date().getFullYear()
 
 const sitemapUrl = `/api/blog/sitemap.xml`
@@ -12,15 +14,13 @@ const rssFeedUrl = `/api/blog/rss`
 
 onMounted(async () => {
   try {
-    const [icpRes, gonganRes, startRes] = await Promise.all([
+    const [icpRes, gonganRes] = await Promise.all([
       getConfigByKey('icp-beian').catch(() => null),
       getConfigByKey('gongan-beian').catch(() => null),
-      getConfigByKey('start-time').catch(() => null)
+      fetchRunDays()
     ])
     icpBeian.value = icpRes?.data?.data?.configValue || ''
     gonganBeian.value = gonganRes?.data?.data?.configValue || ''
-    const sv = startRes?.data?.data?.configValue || ''
-    startYear.value = sv ? sv.split('-')[0] : ''
   } catch {
     /* ignore */
   }

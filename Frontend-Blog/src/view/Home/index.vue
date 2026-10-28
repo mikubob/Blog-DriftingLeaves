@@ -23,7 +23,9 @@ const showTimeWidgets = ref(false)
 let widgetMediaQuery = null
 let widgetMediaQueryListener = null
 
+let requestToken = 0
 const loadArticles = async () => {
+  const token = ++requestToken
   loading.value = true
   try {
     let res
@@ -32,13 +34,14 @@ const loadArticles = async () => {
     } else {
       res = await getArticlePage(page.value, pageSize)
     }
+    if (token !== requestToken) return
     const data = res.data.data
     articles.value = data.records ?? []
     total.value = data.total ?? 0
   } catch {
-    articles.value = []
+    // The request layer reports the failure; keep the last successful page.
   } finally {
-    loading.value = false
+    if (token === requestToken) loading.value = false
   }
 }
 
@@ -74,6 +77,7 @@ onUnmounted(() => {
     widgetMediaQuery.removeEventListener('change', widgetMediaQueryListener)
   }
 })
+onUnmounted(() => { ++requestToken })
 </script>
 
 <template>

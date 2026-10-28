@@ -12,6 +12,9 @@ export const login = (payload) => http.post('/admin/admin/login', payload)
  */
 export const sendCode = (payload) => http.post('/admin/admin/sendCode', payload)
 
+/** 向当前登录管理员的绑定邮箱发送换绑验证码，无 body；成功返回 Result，失败拒绝。 */
+export const sendChangeEmailCode = () => http.post('/admin/admin/sendChangeEmailCode')
+
 /**
  * 获取管理员信息
  * @param {boolean} silent 是否为静默请求（用于启动时恢复登录状态）

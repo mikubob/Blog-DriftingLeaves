@@ -1,14 +1,18 @@
 ﻿<script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useBlogStore, useVisitorStore } from '@/stores'
-import { addSubscription, checkSubscription, unsubscribe } from '@/api/rss'
+import { addSubscription, updateSubscription, checkSubscription, unsubscribe } from '@/api/rss'
 import { useSiteRuntime } from '@/composables/useSiteRuntime'
+import { safeLink } from '@shared/links.mjs'
 
 const router = useRouter()
+const route = useRoute()
 const blogStore = useBlogStore()
 const visitorStore = useVisitorStore()
 const { runDays, fetchRunDays } = useSiteRuntime()
+
+/** 侧栏聚合展示与局部订阅交互；归属状态随访客凭据重载，WS/心跳/重连仅随组件存活。 */
 
 /* 分类/标签弹窗 */
 const showCatModal = ref(false)
@@ -21,70 +25,85 @@ const rssSubmitting = ref(false)
 const isSubscribed = ref(false)
 const rssEditMode = ref(false) // 编辑模式
 
+const unsubscribeToken = ref('')
+let statusToken = 0
 const checkRssStatus = async () => {
-  if (!visitorStore.visitorId) return
+  const token = ++statusToken
   try {
-    const res = await checkSubscription(visitorStore.visitorId)
+    await visitorStore.record()
+    if (!active || token !== statusToken) return
+    const res = await checkSubscription()
+    if (!active || token !== statusToken) return
     const data = res.data.data
-    if (data && data.subscribed) {
-      isSubscribed.value = true
-      rssForm.value.nickname = data.nickname || ''
-      rssForm.value.email = data.email || ''
-    } else {
-      isSubscribed.value = false
+    isSubscribed.value = !!data?.subscribed
+    unsubscribeToken.value = data?.unsubscribeToken || ''
+    if (!rssEditMode.value) {
+      rssForm.value = { nickname: data?.nickname || '', email: data?.email || '' }
     }
   } catch {
-    /* ignore */
+    // Request layer reports status failures.
   }
 }
-
-const openRssModal = () => {
+const openRssModal = async () => {
   rssEditMode.value = false
-  showRssModal.value = true
+  await checkRssStatus()
+  if (active) showRssModal.value = true
 }
-
 const handleRssSubscribe = async () => {
-  if (!rssForm.value.email.trim()) {
-    ElMessage.warning('请输入邮箱')
+  if (rssSubmitting.value) return
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rssForm.value.email.trim())) {
+    ElMessage.warning('请输入有效邮箱')
     return
   }
   rssSubmitting.value = true
   try {
-    await addSubscription({
-      visitorId: visitorStore.visitorId,
-      nickname: rssForm.value.nickname.trim() || '',
-      email: rssForm.value.email.trim()
+    await visitorStore.record()
+    await (rssEditMode.value ? updateSubscription : addSubscription)({
+      nickname: rssForm.value.nickname.trim(), email: rssForm.value.email.trim()
     })
-    ElMessage.success(rssEditMode.value ? '订阅信息已更新' : '订阅成功')
-    isSubscribed.value = true
+    ElMessage.success('信息已提交；首次订阅或更换邮箱请查收确认邮件')
     rssEditMode.value = false
     showRssModal.value = false
+    await checkRssStatus()
   } catch {
-    ElMessage.error('操作失败')
+    // Preserve input on rejection.
   } finally {
     rssSubmitting.value = false
   }
 }
-
 const handleRssUnsubscribe = async () => {
-  if (!rssForm.value.email) return
+  if (!unsubscribeToken.value || rssSubmitting.value) return
   rssSubmitting.value = true
   try {
-    await unsubscribe(rssForm.value.email)
+    await unsubscribe(unsubscribeToken.value)
     ElMessage.success('已取消订阅')
     isSubscribed.value = false
+    unsubscribeToken.value = ''
     rssForm.value = { nickname: '', email: '' }
     rssEditMode.value = false
     showRssModal.value = false
   } catch {
-    ElMessage.error('取消失败')
+    // Preserve current subscription on failure.
   } finally {
     rssSubmitting.value = false
   }
 }
+watch(() => [route.query.rssConfirm, route.query.rssUnsubscribe], (_next, previous) => {
+  if (previous.some(Boolean)) checkRssStatus()
+})
+watch(() => visitorStore.ready, (ready) => {
+  if (ready) checkRssStatus()
+  else {
+    ++statusToken
+    isSubscribed.value = false
+    unsubscribeToken.value = ''
+  }
+})
 
 /* WebSocket 在线访客 */
 const onlineCount = ref(0)
+let active = true
+let reconnectTimer = null
 let ws = null
 let heartCheck = null
 
@@ -110,13 +129,16 @@ heartCheck = {
 
 const connectWs = () => {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws'
-  const host = import.meta.env.DEV ? 'localhost:5922' : location.host
+  if (!active) return
+  const host = location.host
   try {
     ws = new WebSocket(`${protocol}://${host}/api/ws/online`)
     ws.onopen = () => {
+      if (!active) return
       heartCheck.start()
     }
     ws.onmessage = (e) => {
+      if (!active) return
       const msg = e.data
       if (msg === 'pong') return
       const count = parseInt(msg, 10)
@@ -124,7 +146,7 @@ const connectWs = () => {
     }
     ws.onclose = () => {
       heartCheck.stop()
-      setTimeout(connectWs, 5000)
+      if (active) reconnectTimer = setTimeout(connectWs, 5000)
     }
     ws.onerror = () => {
       heartCheck.stop()
@@ -141,6 +163,9 @@ onMounted(() => {
   fetchRunDays()
 })
 onUnmounted(() => {
+  active = false
+  ++statusToken
+  clearTimeout(reconnectTimer)
   heartCheck?.stop()
   ws?.close()
   ws = null
@@ -199,7 +224,7 @@ const goTag = (slug) => {
       <div class="info-social">
         <a
           v-if="info.github"
-          :href="info.github"
+          :href="safeLink(info.github)"
           target="_blank"
           rel="noopener"
           class="social-link"
@@ -229,14 +254,15 @@ const goTag = (slug) => {
             <path d="m22 7-8.97 5.7a1.94 1.94 0 01-2.06 0L2 7" />
           </svg>
         </a>
-        <span
+        <button
+          type="button"
           class="social-link"
           :class="{ subscribed: isSubscribed }"
           :title="isSubscribed ? '已订阅 RSS' : 'RSS 订阅'"
           @click="openRssModal"
         >
           <i class="iconfont icon-rssdingyue" style="font-size: 18px" />
-        </span>
+        </button>
       </div>
     </div>
 
@@ -346,11 +372,13 @@ const goTag = (slug) => {
       <div v-else class="rss-form">
         <input
           v-model="rssForm.nickname"
+          aria-label="订阅昵称"
           placeholder="昵称"
           class="rss-form-input"
         />
         <input
           v-model="rssForm.email"
+          aria-label="订阅邮箱"
           type="email"
           placeholder="邮箱 *"
           class="rss-form-input"
@@ -474,6 +502,9 @@ const goTag = (slug) => {
   margin-top: 14px;
 }
 .social-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;

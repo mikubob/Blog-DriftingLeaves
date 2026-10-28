@@ -30,7 +30,7 @@ const {
 /* ---- 批量删除 ---- */
 const batchDeleteCategories = async () => {
   if (!selectedCategories.value.length) return ElMessage.warning('请先选择分类')
-  await ElMessageBox.confirm(
+  if (!await ElMessageBox.confirm(
     `确认删除选中的 ${selectedCategories.value.length} 个分类？`,
     '警告',
     {
@@ -38,7 +38,7 @@ const batchDeleteCategories = async () => {
       cancelButtonText: '取消',
       type: 'warning'
     }
-  )
+  ).then(() => true, () => false)) return
   await categoryStore.removeCategories(
     selectedCategories.value.map((r) => r.id)
   )
@@ -48,7 +48,7 @@ const batchDeleteCategories = async () => {
 
 const batchDeleteTags = async () => {
   if (!selectedTags.value.length) return ElMessage.warning('请先选择标签')
-  await ElMessageBox.confirm(
+  if (!await ElMessageBox.confirm(
     `确认删除选中的 ${selectedTags.value.length} 个标签？`,
     '警告',
     {
@@ -56,7 +56,7 @@ const batchDeleteTags = async () => {
       cancelButtonText: '取消',
       type: 'warning'
     }
-  )
+  ).then(() => true, () => false)) return
   await categoryStore.removeTags(selectedTags.value.map((r) => r.id))
   clearTagSelection()
   ElMessage.success('批量删除成功')
@@ -95,11 +95,11 @@ const saveCat = async () => {
 }
 
 const deleteCat = async (row) => {
-  await ElMessageBox.confirm(`确认删除分类「${row.name}」？`, '警告', {
+  if (!await ElMessageBox.confirm(`确认删除分类「${row.name}」？`, '警告', {
     confirmButtonText: '删除',
     cancelButtonText: '取消',
     type: 'warning'
-  })
+  }).then(() => true, () => false)) return
   await categoryStore.removeCategories([row.id])
   ElMessage.success('删除成功')
 }
@@ -125,13 +125,11 @@ const saveTag = async () => {
 }
 
 const deleteTag = async (row) => {
-  await ElMessageBox.confirm(`确认删除标签「${row.name}」？`, '警告', {
+  if (!await ElMessageBox.confirm(`确认删除标签「${row.name}」？`, '警告', {
     confirmButtonText: '删除',
     cancelButtonText: '取消',
     type: 'warning'
-  }).catch(() => {
-    throw new Error('cancel')
-  })
+  }).then(() => true, () => false)) return
   await categoryStore.removeTags([row.id])
   ElMessage.success('删除成功')
 }

@@ -1,4 +1,5 @@
 <script setup>
+import { deleteRssList } from '@/api/rssSubscription'
 import { ref, onMounted } from 'vue'
 import { useAnalyticsStore } from '@/stores'
 import { useBatchSelection } from '@/composables/useBatchSelection'
@@ -51,24 +52,24 @@ const handleSizeChange = (s) => {
 
 /* ---- 删除 ---- */
 const deleteOne = async (row) => {
-  await ElMessageBox.confirm(`确认删除订阅「${row.email}」？`, '警告', {
+  if (!await ElMessageBox.confirm(`确认删除订阅「${row.email}」？`, '警告', {
     confirmButtonText: '删除',
     cancelButtonText: '取消',
     type: 'warning'
-  })
-  await analyticsStore.removeRss([row.id])
+  }).then(() => true, () => false)) return
+  await deleteRssList([row.id])
   ElMessage.success('删除成功')
   load()
 }
 
 const batchDelete = async () => {
   if (!selected.value.length) return ElMessage.warning('请先选择订阅')
-  await ElMessageBox.confirm(
+  if (!await ElMessageBox.confirm(
     `确认删除选中的 ${selected.value.length} 条订阅？`,
     '警告',
     { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
-  )
-  await analyticsStore.removeRss(selected.value.map((r) => r.id))
+  ).then(() => true, () => false)) return
+  await deleteRssList(selected.value.map((r) => r.id))
   clearSelection()
   ElMessage.success('批量删除成功')
   load()

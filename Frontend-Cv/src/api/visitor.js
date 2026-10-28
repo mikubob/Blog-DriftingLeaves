@@ -1,19 +1,3 @@
 import request from '@/utils/request'
-
-/** 收集浏览器指纹信息 */
-const collectBrowserInfo = () => ({
-  pagePath: window.location.pathname,
-  pageTitle: document.title,
-  referer: document.referrer || '',
-  screen: `${window.screen.width}x${window.screen.height}`,
-  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-  language: navigator.language,
-  platform: navigator.platform,
-  cookiesEnabled: navigator.cookieEnabled,
-  deviceMemory: navigator.deviceMemory || null,
-  hardwareConcurrency: navigator.hardwareConcurrency || null
-})
-
-/** 记录访客 */
-export const recordVisitor = () =>
-  request.post('/cv/visitor/record', collectBrowserInfo())
+/** 记录浏览器信息；返回含 visitorToken 的 AxiosResponse，凭据保存由 composable 负责。 */
+export const recordVisitor = (data, config) => request.post('/cv/visitor/record', data, config)

@@ -1,4 +1,7 @@
 <script setup>
+import { replyMessage } from '@/api/message'
+import { deleteMessages } from '@/api/message'
+import { approveMessages } from '@/api/message'
 import { ref, onMounted } from 'vue'
 import { useMessageStore } from '@/stores'
 import { useBatchSelection } from '@/composables/useBatchSelection'
@@ -45,14 +48,14 @@ const handleFilterChange = () => {
 
 /* ---- 审核 ---- */
 const approveOne = async (row) => {
-  await messageStore.approve([row.id])
+  await approveMessages([row.id])
   ElMessage.success('审核通过')
   load()
 }
 
 const batchApprove = async () => {
   if (!selected.value.length) return ElMessage.warning('请先选择留言')
-  await messageStore.approve(selected.value.map((r) => r.id))
+  await approveMessages(selected.value.map((r) => r.id))
   ElMessage.success('批量审核通过')
   load()
 }
@@ -69,11 +72,11 @@ const deleteOne = async (row) => {
     return
   }
   try {
-    await messageStore.remove([row.id])
+    await deleteMessages([row.id])
     ElMessage.success('删除成功')
     load()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.msg || '删除失败')
+  } catch {
+    // The request layer reports the error; preserve current input.
   }
 }
 
@@ -89,12 +92,12 @@ const batchDelete = async () => {
     return
   }
   try {
-    await messageStore.remove(selected.value.map((r) => r.id))
+    await deleteMessages(selected.value.map((r) => r.id))
     clearSelection()
     ElMessage.success('批量删除成功')
     load()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.msg || '批量删除失败')
+  } catch {
+    // The request layer reports the error; preserve current input.
   }
 }
 
@@ -122,7 +125,7 @@ const openReply = (row) => {
 const submitReply = async () => {
   if (!replyContent.value.trim()) return ElMessage.warning('回复内容不能为空')
   const t = replyTarget.value
-  await messageStore.reply({
+  await replyMessage({
     parentId: t.id,
     rootId: t.rootId ?? t.id,
     parentNickname: t.nickname ?? '',
@@ -195,7 +198,8 @@ onMounted(load)
         <el-table-column type="selection" width="48" />
         <el-table-column label="留言内容" min-width="280" show-overflow-tooltip>
           <template #default="{ row }">
-            <div class="msg-content" v-html="row.contentHtml || row.content" />
+            <div v-if="row.contentHtml" class="msg-content" v-html="row.contentHtml" />
+            <div v-else class="msg-content">{{ row.content }}</div>
           </template>
         </el-table-column>
         <el-table-column prop="nickname" label="昵称" width="110" />
@@ -285,7 +289,8 @@ onMounted(load)
           fmtDate(detailRow.createTime)
         }}</el-descriptions-item>
         <el-descriptions-item label="留言内容" :span="2">
-          <div v-html="detailRow.contentHtml || detailRow.content || '-'" />
+          <div v-if="detailRow.contentHtml" v-html="detailRow.contentHtml" />
+          <div v-else>{{ detailRow.content || '-' }}</div>
         </el-descriptions-item>
       </el-descriptions>
       <template #footer>

@@ -1,5 +1,10 @@
+/** 管理端 Cookie 请求入口：成功返回 Result，业务/HTTP 失败拒绝原错误；silent 供启动恢复和页内错误展示使用。 */
 import axios from 'axios'
-import router from '@/router'
+let onSessionExpired = () => {}
+/** 由应用入口注入清状态/replace 登录流程，请求模块不依赖 Store 或 Router。 */
+export const setSessionExpiredHandler = (handler) => {
+  onSessionExpired = handler
+}
 
 const baseURL = '/api'
 
@@ -41,12 +46,12 @@ http.interceptors.response.use(
       if (!http._isRedirecting401) {
         http._isRedirecting401 = true
         ElMessage.warning('登录状态失效，请重新登录')
-        router.push('/login')
+        onSessionExpired()
         setTimeout(() => {
           http._isRedirecting401 = false
         }, 2000)
       }
-    } else if (!silent) {
+    } else if (!silent && error.code !== 'ERR_CANCELED') {
       const backendMsg = error?.response?.data?.msg
       const fallbackMsg =
         status === 403

@@ -1,6 +1,8 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import emojiList from '@/assets/emjio/emjio.json'
+import emojiList from './emoji.json'
+
+/** 局部表情面板，无输入 props；select(char) 通知调用者插入，卸载移除外部点击监听。 */
 
 const emit = defineEmits(['select'])
 const show = ref(false)
@@ -33,24 +35,29 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
 
 <template>
   <div class="emoji-picker-wrap">
-    <span
+    <button
+      type="button"
       ref="triggerRef"
       class="emoji-trigger"
       title="插入表情"
+      :aria-expanded="show"
+      @keydown.esc="show = false"
       @click="toggle"
     >
       <i class="iconfont icon-talk_emjio" />
-    </span>
+    </button>
     <Transition name="emoji-fade">
-      <div v-show="show" ref="pickerRef" class="emoji-panel">
+      <div v-show="show" ref="pickerRef" class="emoji-panel" @keydown.esc="show = false; triggerRef?.focus()">
         <div class="emoji-grid">
-          <span
+          <button
+            type="button"
             v-for="e in emojiList"
             :key="e.codes"
             class="emoji-item"
             @click="pickEmoji(e)"
-            >{{ e.char }}</span
           >
+            {{ e.char }}
+          </button>
         </div>
       </div>
     </Transition>
@@ -64,6 +71,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
   align-items: center;
 }
 .emoji-trigger {
+  border: 0;
+  background: transparent;
   cursor: pointer;
   font-size: 20px;
   color: #909399;
@@ -105,6 +114,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
   gap: 2px;
 }
 .emoji-item {
+  border: 0;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -145,6 +156,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
     grid-template-columns: repeat(7, 1fr);
   }
   .emoji-item {
+    border: 0;
+    background: transparent;
     width: 34px;
     height: 34px;
     font-size: 20px;

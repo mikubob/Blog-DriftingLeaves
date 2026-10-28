@@ -10,6 +10,12 @@ const router = createRouter({
       meta: { title: '玄〤的简历' }
     },
     {
+      path: '/403',
+      name: 'forbidden',
+      component: () => import('@/view/Forbidden/index.vue'),
+      meta: { title: '访问受限' }
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'notFound',
       component: () => import('@/view/NotFound/index.vue'),

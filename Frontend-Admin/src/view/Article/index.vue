@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { getArticleById, deleteArticles, togglePublish as setPublish, toggleTop as setTop } from '@/api/article'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useArticleStore } from '@/stores'
 import { useBatchSelection } from '@/composables/useBatchSelection'
@@ -27,7 +28,6 @@ const load = () => {
     pageSize: size.value,
     ...searchForm.value
   })
-  articleStore.fetchCategories()
 }
 
 const handleSearch = () => {
@@ -63,41 +63,46 @@ const toEdit = (id) => {
 
 const toCreate = () => router.push('/article/edit')
 
+let viewToken = 0
 const openView = async (row) => {
+  const token = ++viewToken
   viewDialogVisible.value = true
   viewLoading.value = true
+  viewRow.value = null
   try {
-    const detail = await articleStore.fetchDetail(row.id)
-    viewRow.value = detail
+    const { data: detail } = await getArticleById(row.id)
+    if (token === viewToken && viewDialogVisible.value) viewRow.value = detail
+  } catch {
+    // Reported by request layer.
   } finally {
-    viewLoading.value = false
+    if (token === viewToken) viewLoading.value = false
   }
 }
 
 const togglePublish = async (row) => {
-  await articleStore.toggleArticlePublish(row.id, row.isPublished ? 0 : 1)
+  await setPublish(row.id, row.isPublished ? 0 : 1)
   load()
 }
 
 const toggleTop = async (row) => {
-  await articleStore.toggleArticleTop(row.id, row.isTop ? 0 : 1)
+  await setTop(row.id, row.isTop ? 0 : 1)
   load()
 }
 
 const deleteOne = async (row) => {
-  await ElMessageBox.confirm(`确认删除文章《${row.title}》？`, '警告', {
+  if (!await ElMessageBox.confirm(`确认删除文章《${row.title}》？`, '警告', {
     confirmButtonText: '删除',
     cancelButtonText: '取消',
     type: 'warning'
-  })
-  await articleStore.removeArticles([row.id])
+  }).then(() => true, () => false)) return
+  await deleteArticles([row.id])
   ElMessage.success('删除成功')
   load()
 }
 
 const batchDelete = async () => {
   if (!selected.value.length) return ElMessage.warning('请先选择文章')
-  await ElMessageBox.confirm(
+  if (!await ElMessageBox.confirm(
     `确认删除选中的 ${selected.value.length} 篇文章？`,
     '警告',
     {
@@ -105,8 +110,8 @@ const batchDelete = async () => {
       cancelButtonText: '取消',
       type: 'warning'
     }
-  )
-  await articleStore.removeArticles(selected.value.map((r) => r.id))
+  ).then(() => true, () => false)) return
+  await deleteArticles(selected.value.map((r) => r.id))
   clearSelection()
   ElMessage.success('批量删除成功')
   load()
@@ -133,7 +138,11 @@ const toggleCardSelection = (row, checked) => {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  articleStore.fetchCategories().catch(() => {})
+})
+onBeforeUnmount(() => { ++viewToken })
 </script>
 
 <template>

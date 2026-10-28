@@ -72,19 +72,10 @@ export const isValidContent = (value) => {
   return { valid: true, msg: '' }
 }
 
-/**
- * 校验验证码答案
- * @param {string} answer 用户输入的答案
- * @param {number|null} result 后端返回的正确结果
- * @returns {{ valid: boolean, msg: string }} 校验结果
- */
-export const isValidCaptcha = (answer, result) => {
-  if (!answer || !answer.trim()) {
-    return { valid: false, msg: '请输入验证码' }
-  }
-  const num = parseInt(answer.trim(), 10)
-  if (isNaN(num) || num !== result) {
-    return { valid: false, msg: '验证码错误，请重新计算' }
+/** The answer is checked by the server against the one-time challenge. */
+export const isValidCaptcha = (answer) => {
+  if (!/^-?\d+$/.test(answer?.trim() || '')) {
+    return { valid: false, msg: '请输入完整的整数验证码' }
   }
   return { valid: true, msg: '' }
 }

@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { readFile } from 'node:fs/promises'
 import {
   MarkdownHeadingIds,
   headingSlug,
@@ -41,18 +40,8 @@ test('fragment lookup decodes Chinese and rejects malformed encodings', () => {
 })
 
 test('admin and blog use identical slug rules', async () => {
-  const admin = await readFile(
-    new URL(
-      '../../Frontend-Admin/src/utils/markdownAnchors.js',
-      import.meta.url
-    ),
-    'utf8'
-  )
-  const blog = await readFile(
-    new URL('../src/utils/markdownAnchors.js', import.meta.url),
-    'utf8'
-  )
-  const core = (source) =>
-    source.slice(0, source.indexOf('export const findFragmentTarget'))
-  assert.equal(core(admin), core(blog))
+  const admin = await import('../../Frontend-Admin/src/utils/markdownAnchors.js')
+  assert.equal(admin.headingSlug, headingSlug)
+  assert.equal(admin.uniqueHeadingId, uniqueHeadingId)
+  assert.equal(admin.MarkdownHeadingIds, MarkdownHeadingIds)
 })

@@ -33,6 +33,8 @@ echarts.use([
 /* ---- 概览数据 ---- */
 const overview = ref({})
 const loadingOverview = ref(false)
+const readErrors = ref({})
+const controller = new AbortController()
 
 const statCards = [
   { key: 'totalViewCount', label: '总浏览量', icon: 'icon-eye' },
@@ -50,9 +52,12 @@ const statCards = [
 
 const fetchOverview = async () => {
   loadingOverview.value = true
+  readErrors.value.overview = false
   try {
-    const res = await getOverview()
-    overview.value = res.data ?? {}
+    const res = await getOverview({ signal: controller.signal })
+    if (active) overview.value = res.data ?? {}
+  } catch {
+    if (active) readErrors.value.overview = true
   } finally {
     loadingOverview.value = false
   }
@@ -65,6 +70,7 @@ const runStartDate = ref('')
 const fetchRunDays = async () => {
   try {
     const res = await getConfigByKey('start-time')
+    if (!active) return
     const dateStr = res.data?.configValue ?? ''
     if (dateStr) {
       runStartDate.value = dateStr
@@ -150,9 +156,19 @@ const makeLineOption = (title, categories, data, color) => ({
 const splitStr = (s) => (s ? s.split(',') : [])
 const splitNum = (s) => (s ? s.split(',').map(Number) : [])
 
+let viewRequest = 0
+let visitorRequest = 0
+let active = true
 const fetchViewChart = async () => {
+  const token = ++viewRequest
+  if (!viewDateRange.value?.length) return
   const [begin, end] = viewDateRange.value
-  const res = await getViewStatistics({ begin, end })
+  readErrors.value.view = false
+  const res = await getViewStatistics({ begin, end }, { signal: controller.signal }).catch(() => {
+    if (active && token === viewRequest) readErrors.value.view = true
+  })
+  if (!res) return
+  if (!active || token !== viewRequest) return
   const vo = res.data ?? {}
   viewChart.value?.setOption(
     makeLineOption(
@@ -166,8 +182,15 @@ const fetchViewChart = async () => {
 
 /* 访客折线图（独立日期） */
 const fetchVisitorChart = async () => {
+  const token = ++visitorRequest
+  if (!visitorDateRange.value?.length) return
   const [begin, end] = visitorDateRange.value
-  const res = await getVisitorStatistics({ begin, end })
+  readErrors.value.visitor = false
+  const res = await getVisitorStatistics({ begin, end }, { signal: controller.signal }).catch(() => {
+    if (active && token === visitorRequest) readErrors.value.visitor = true
+  })
+  if (!res) return
+  if (!active || token !== visitorRequest) return
   const vo = res.data ?? {}
   visitorChart.value?.setOption(
     makeLineOption(
@@ -181,7 +204,11 @@ const fetchVisitorChart = async () => {
 
 /* 文章阅读量 TOP10 柱状图 */
 const fetchBarChart = async () => {
-  const res = await getArticleViewTop10()
+  readErrors.value.bar = false
+  const res = await getArticleViewTop10({ signal: controller.signal }).catch(() => {
+    if (active) readErrors.value.bar = true
+  })
+  if (!active || !res) return
   const vo = res.data ?? {}
   const titles = (vo.titleList ?? []).slice(0, 10).reverse()
   const counts = (vo.viewCountList ?? []).slice(0, 10).reverse()
@@ -213,7 +240,11 @@ const fetchBarChart = async () => {
 
 /* 访客省份饼图 */
 const fetchPieChart = async () => {
-  const res = await getProvinceDistribution()
+  readErrors.value.pie = false
+  const res = await getProvinceDistribution({ signal: controller.signal }).catch(() => {
+    if (active) readErrors.value.pie = true
+  })
+  if (!active || !res) return
   const vo = res.data ?? {}
   const provinces = splitStr(vo.provinceList)
   const counts = splitNum(vo.countList)
@@ -276,28 +307,45 @@ const resizeCharts = () => {
   pieChart.value?.resize()
 }
 
+/** 各模块独立失败与重试，不清空已经成功绘制的数据。 */
+const retryReads = { overview: fetchOverview, view: fetchViewChart, visitor: fetchVisitorChart, bar: fetchBarChart, pie: fetchPieChart }
+const readLabels = { overview: '概览', view: '浏览量趋势', visitor: '访客趋势', bar: '文章排行', pie: '省份分布' }
+let resizeFrame = 0
+
 onMounted(async () => {
   fetchOverview()
   fetchRunDays()
   await nextTick()
+  if (!active) return
   initCharts()
-  requestAnimationFrame(() => {
+  resizeFrame = requestAnimationFrame(() => {
+    if (!active) return
     resizeCharts()
   })
   window.addEventListener('resize', resizeCharts)
 })
 
 onBeforeUnmount(() => {
+  active = false
+  controller.abort()
+  cancelAnimationFrame(resizeFrame)
   window.removeEventListener('resize', resizeCharts)
   viewChart.value?.dispose()
+  viewChart.value = null
   visitorChart.value?.dispose()
+  visitorChart.value = null
   barChart.value?.dispose()
+  barChart.value = null
   pieChart.value?.dispose()
+  pieChart.value = null
 })
 </script>
 
 <template>
   <div class="dashboard">
+    <template v-for="(failed, key) in readErrors" :key="key">
+      <p v-if="failed" role="alert">{{ readLabels[key] }}加载失败 <button type="button" @click="retryReads[key]()">重试</button></p>
+    </template>
     <!-- 概览卡片 -->
     <div v-loading="loadingOverview" class="stat-grid">
       <div v-for="card in statCards" :key="card.key" class="stat-card">

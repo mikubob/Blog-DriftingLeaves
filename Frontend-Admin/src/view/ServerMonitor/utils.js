@@ -2,11 +2,12 @@ export const DEFAULT_RESOURCE = 'all'
 export const DEFAULT_LIMIT = 20
 export const REFRESH_INTERVAL = 3000
 
+/** 尚无快照时的展示结构；部署模式保持 unknown，不从硬件字段猜测。 */
 export function createEmptySnapshot() {
   return {
     collectTime: '',
-    deploymentMode: 'server',
-    deploymentModeText: '服务器部署',
+    deploymentMode: 'unknown',
+    deploymentModeText: '未知部署环境',
     deploymentTips: [],
     overview: {},
     load: { topProcesses: [] },
@@ -60,14 +61,7 @@ export function normalizeOptions(options) {
     : [{ label: '全部', value: DEFAULT_RESOURCE }, ...list]
 }
 
-export function syncSelectedResource(selectedRef, options) {
-  const list = Array.isArray(options) ? options : []
-  const exists = list.some((item) => item.value === selectedRef.value)
-  if (!exists) {
-    selectedRef.value = list[0]?.value || DEFAULT_RESOURCE
-  }
-}
-
+/** 将服务端快照补齐为面板输入；不修改输入、不操作响应式引用，缺失资源选项补上“全部”。 */
 export function normalizeSnapshot(data) {
   const next = createEmptySnapshot()
   const raw = data ?? {}
@@ -102,93 +96,11 @@ export function normalizeSnapshot(data) {
   next.diskOptions = normalizeOptions(raw.diskOptions)
   next.networkOptions = normalizeOptions(raw.networkOptions)
   next.diskIoOptions = normalizeOptions(raw.diskIoOptions)
-  next.deploymentMode = detectDeploymentMode(raw, next)
+  next.deploymentMode = ['server', 'container'].includes(raw.deploymentMode)
+    ? raw.deploymentMode : 'unknown'
   next.deploymentModeText =
-    next.deploymentMode === 'container' ? 'Docker 容器视角' : '服务器宿主机视角'
-  next.deploymentTips = buildDeploymentTips(next)
+    raw.deploymentModeText || '未知部署环境'
+  next.deploymentTips = Array.isArray(raw.deploymentTips) ? raw.deploymentTips : []
 
   return next
-}
-
-export function detectDeploymentMode(raw, normalized) {
-  const explicitMode = String(
-    raw?.deploymentMode || raw?.runtimeMode || raw?.environmentType || ''
-  )
-    .trim()
-    .toLowerCase()
-
-  if (['docker', 'container', 'podman', 'k8s', 'kubernetes'].includes(explicitMode)) {
-    return 'container'
-  }
-
-  if (['host', 'server', 'physical', 'vm', 'baremetal'].includes(explicitMode)) {
-    return 'server'
-  }
-
-  const disk = normalized?.disk ?? {}
-  const diskType = String(disk.type || '').toLowerCase()
-  const fileSystem = String(disk.fileSystem || '').toLowerCase()
-  const mount = String(disk.mount || '').toLowerCase()
-  const diskOptionCount = (normalized?.diskOptions || []).length
-  const networkOptionCount = (normalized?.networkOptions || []).length
-  const diskIoOptionCount = (normalized?.diskIoOptions || []).length
-  const cpu = normalized?.cpu ?? {}
-  const memory = normalized?.memory ?? {}
-
-  const looksLikeContainerFs =
-    diskType.includes('overlay') ||
-    fileSystem.includes('overlay') ||
-    fileSystem.includes('aufs') ||
-    fileSystem.includes('container') ||
-    mount === '/'
-
-  const hasFewHostResources =
-    diskOptionCount <= 2 && networkOptionCount <= 2 && diskIoOptionCount <= 2
-
-  const hasContainerLikeMemory =
-    !memory.sharedText ||
-    memory.sharedText === '-' ||
-    memory.sharedText === 'N/A' ||
-    memory.sharedText === 'n/a'
-
-  const hasContainerLikeCpu =
-    Number(cpu.physicalPackageCount ?? 0) <= 1 &&
-    Number(cpu.physicalCoreCount ?? 0) <= Number(cpu.logicalCoreCount ?? 0)
-
-  if (
-    looksLikeContainerFs &&
-    hasFewHostResources &&
-    hasContainerLikeMemory &&
-    hasContainerLikeCpu
-  ) {
-    return 'container'
-  }
-
-  return 'server'
-}
-
-export function buildDeploymentTips(snapshot) {
-  if (snapshot.deploymentMode !== 'container') {
-    return [
-      '当前展示的是宿主机视角指标，适合排查整台服务器的负载、磁盘和网络情况。'
-    ]
-  }
-
-  const tips = [
-    '当前后端运行在 Docker 容器内，监控数据更偏向容器可见资源，而不是整台宿主机。'
-  ]
-
-  if ((snapshot.diskOptions || []).length <= 2) {
-    tips.push('磁盘资源较少通常是容器文件系统视角，例如 overlay 挂载。')
-  }
-
-  if ((snapshot.networkOptions || []).length <= 2) {
-    tips.push('网络指标可能只反映容器命名空间中的网卡或聚合后的容器出口流量。')
-  }
-
-  if ((snapshot.diskIoOptions || []).length <= 2) {
-    tips.push('磁盘 IO 很可能无法完整反映宿主机多块磁盘的真实情况。')
-  }
-
-  return tips
 }

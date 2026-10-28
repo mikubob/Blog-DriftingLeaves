@@ -13,8 +13,7 @@ import {
   DEFAULT_LIMIT,
   DEFAULT_RESOURCE,
   normalizeSnapshot,
-  REFRESH_INTERVAL,
-  syncSelectedResource
+  REFRESH_INTERVAL
 } from './utils'
 
 const pageLoading = ref(false)
@@ -48,80 +47,84 @@ const deploymentMode = computed(() => snapshot.value.deploymentMode)
 const deploymentModeText = computed(() => snapshot.value.deploymentModeText)
 const deploymentTips = computed(() => snapshot.value.deploymentTips || [])
 
+let active = true
+let controller = null
+const loadError = ref('')
+
+/** 选项变化后的局部选择协调；无对应资源时回到服务端首个选项。 */
+function syncSelectedResource(selectedRef, options) {
+  if (!options.some((item) => item.value === selectedRef.value)) {
+    selectedRef.value = options[0]?.value || DEFAULT_RESOURCE
+  }
+}
+
+/** 取消旧读取，只接受最新快照；完成后才排下一轮，卸载后不再调度。失败留在页内供重试。 */
 async function fetchSnapshot({ mode = 'silent' } = {}) {
+  if (!active) return
+  stopPolling()
+  controller?.abort()
+  controller = new AbortController()
   const currentToken = ++requestToken
-
-  if (mode === 'initial') {
-    pageLoading.value = true
-  }
-  if (mode === 'manual') {
-    refreshing.value = true
-  }
-
+  pageLoading.value = mode === 'initial'
+  refreshing.value = mode === 'manual'
   try {
     const res = await getServerMonitorSnapshot({
       diskResourceName: diskResourceName.value,
       networkResourceName: networkResourceName.value,
       diskIoResourceName: diskIoResourceName.value,
       limit: DEFAULT_LIMIT
-    })
-
-    if (currentToken !== requestToken) return
-
+    }, { signal: controller.signal, silent: true })
+    if (!active || currentToken !== requestToken) return
     const nextSnapshot = normalizeSnapshot(res.data)
     snapshot.value = nextSnapshot
+    loadError.value = ''
     syncSelectedResource(diskResourceName, nextSnapshot.diskOptions)
     syncSelectedResource(networkResourceName, nextSnapshot.networkOptions)
     syncSelectedResource(diskIoResourceName, nextSnapshot.diskIoOptions)
+  } catch (error) {
+    if (active && currentToken === requestToken && error.code !== 'ERR_CANCELED') {
+      loadError.value = error.response?.data?.msg || error.msg || '监控读取失败，将自动重试，也可手动刷新'
+    }
   } finally {
-    if (currentToken === requestToken) {
+    if (active && currentToken === requestToken) {
       pageLoading.value = false
       refreshing.value = false
+      refreshTimer = window.setTimeout(fetchSnapshot, REFRESH_INTERVAL)
     }
   }
 }
 
-function startPolling() {
-  stopPolling()
-  refreshTimer = window.setInterval(() => {
-    fetchSnapshot()
-  }, REFRESH_INTERVAL)
-}
-
 function stopPolling() {
-  if (refreshTimer) {
-    window.clearInterval(refreshTimer)
-    refreshTimer = null
-  }
+  window.clearTimeout(refreshTimer)
+  refreshTimer = null
 }
 
-async function handleManualRefresh() {
-  await fetchSnapshot({ mode: 'manual' })
+function handleManualRefresh() {
+  return fetchSnapshot({ mode: 'manual' })
 }
 
 watch([diskResourceName, networkResourceName, diskIoResourceName], () => {
   fetchSnapshot()
 })
-
-onMounted(async () => {
-  await fetchSnapshot({ mode: 'initial' })
-  startPolling()
-})
-
+onMounted(() => fetchSnapshot({ mode: 'initial' }))
 onBeforeUnmount(() => {
+  active = false
+  ++requestToken
   stopPolling()
+  controller?.abort()
 })
 </script>
 
 <template>
   <div v-loading="pageLoading" class="server-monitor-page">
+    <el-alert v-if="loadError" :title="loadError" type="error" :closable="false" />
     <div class="page-toolbar">
       <div>
         <h1 class="page-title">服务器监测</h1>
         <p class="page-subtitle">
           {{ deploymentMode === 'container'
             ? '当前为 Docker 容器视角，优先展示容器可见的资源状态'
-            : '当前为服务器宿主机视角，展示整机负载、磁盘、网络与 IO 状态' }}
+            : deploymentMode === 'server' ? '当前为服务器宿主机视角，展示整机负载、磁盘、网络与 IO 状态' : '运行环境未知' }}
         </p>
       </div>
       <div class="toolbar-actions">

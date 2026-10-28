@@ -1,21 +1,17 @@
 <script setup>
-import { ref, onMounted, computed, inject, nextTick } from 'vue'
+import { useDiscussionForm } from '@/composables/useDiscussionForm'
+import { discussionDefaults, discussionErrors, fmtDiscussionDate, discussionAvatar, getInitial } from '@/utils/discussion'
+
+import { ref, onMounted, computed, inject, watch, onUnmounted } from 'vue'
 import {
   getMessageTree,
   submitMessage,
   editMessage,
   deleteMessage
 } from '@/api/message'
-import { generateCaptcha } from '@/api/captcha'
-import {
-  isValidNickname,
-  isValidContent,
-  isValidEmailOrQq,
-  isValidCaptcha
-} from '@/utils/formValidate'
 import { useVisitorStore, useBlogStore } from '@/stores'
 import SidebarCard from '@/components/SidebarCard.vue'
-import EmojiPicker from '@/components/EmojiPicker.vue'
+import EmojiPicker from '@shared/EmojiPicker.vue'
 
 const visitorStore = useVisitorStore()
 const blogStore = useBlogStore()
@@ -24,147 +20,81 @@ const { articleTitle, articleMeta } = inject('setHero')
 const messages = ref([])
 const loading = ref(false)
 
-const form = ref({
-  nickname: '',
-  emailOrQq: '',
-  content: '',
-  captchaAnswer: '',
-  isSecret: false,
-  isNotice: true,
-  isMarkdown: true
-})
-
-// 各字段校验错误信息
-const errors = ref({
-  nickname: '',
-  emailOrQq: '',
-  content: '',
-  captcha: ''
-})
-
-// 内容实时字数
-const contentLength = computed(() => form.value.content?.length ?? 0)
-
+const msgTextareaRef = ref(null)
+const { form: form, errors, contentLength, captcha, captchaHover, captchaFocus,
+  loadCaptcha, validateField, validateForm: validateDiscussion, insertEmoji } = useDiscussionForm(visitorStore, msgTextareaRef)
 const replyTarget = ref(null)
 const editTarget = ref(null)
 const submitting = ref(false)
-const msgTextareaRef = ref(null)
+const insertMsgEmoji = insertEmoji
 
-/* 插入 emoji 到留言文本框光标位置 */
-const insertMsgEmoji = (char) => {
-  const ta = msgTextareaRef.value
-  if (!ta) {
-    form.value.content += char
-    return
-  }
-  const start = ta.selectionStart
-  const end = ta.selectionEnd
-  const val = form.value.content
-  form.value.content = val.slice(0, start) + char + val.slice(end)
-  nextTick(() => {
-    const pos = start + char.length
-    ta.setSelectionRange(pos, pos)
-    ta.focus()
-  })
-}
-
-/* 验证码 */
-const captcha = ref({ question: '', result: null })
-const captchaHover = ref(false)
-const captchaFocus = ref(false)
-const loadCaptcha = async () => {
-  try {
-    const res = await generateCaptcha()
-    captcha.value = res.data.data
-    // 刷新验证码后清空之前的验证码错误提示
-    errors.value.captcha = ''
-  } catch {
-    /* ignore */
-  }
-}
-
+const messagePage = ref(1)
+const messageTotal = ref(0)
+const loadError = ref('')
+let requestToken = 0
+let active = true
 const load = async () => {
+  if (!active) return
+  const token = ++requestToken
   loading.value = true
   try {
-    const res = await getMessageTree(visitorStore.visitorId)
-    messages.value = res.data.data ?? []
+    await visitorStore.record().catch(() => {})
+    if (token !== requestToken) return
+    const res = await getMessageTree(messagePage.value)
+    if (token !== requestToken) return
+    messages.value = res.data.data.records ?? []
+    messageTotal.value = res.data.data.total ?? 0
+    loadError.value = ''
+    if (messagePage.value > 1 && !messages.value.length) {
+      messagePage.value--
+      load()
+    }
   } catch {
-    messages.value = []
+    if (token === requestToken) loadError.value = '留言加载失败，请重试'
   } finally {
-    loading.value = false
+    if (token === requestToken) loading.value = false
   }
 }
 
-// 单个字段失焦/即时校验
-const validateField = (field) => {
-  let result
-  switch (field) {
-    case 'nickname':
-      result = isValidNickname(form.value.nickname)
-      break
-    case 'content':
-      result = isValidContent(form.value.content)
-      break
-    case 'emailOrQq':
-      result = isValidEmailOrQq(form.value.emailOrQq)
-      break
-    case 'captcha':
-      result = isValidCaptcha(form.value.captchaAnswer, captcha.value.result)
-      break
-  }
-  errors.value[field] = result.valid ? '' : result.msg
-  return result.valid
-}
-
-// 提交前全量校验
-const validateForm = () => {
-  const fields = ['content', 'nickname', 'emailOrQq']
-  // 新留言才需要校验验证码
-  if (!editTarget.value) {
-    fields.push('captcha')
-  }
-  const valid = fields.map(validateField).every(Boolean)
-  if (!valid) {
-    ElMessage.warning('请检查表单填写是否正确')
-  }
-  return valid
-}
+const validateForm = () => validateDiscussion(!editTarget.value)
 
 const handleSubmit = async () => {
-  if (!validateForm()) return
+  if (!active || submitting.value || !validateForm()) return
   submitting.value = true
   try {
+    await visitorStore.record()
+    if (!active) return
     if (editTarget.value) {
       await editMessage({
         id: editTarget.value.id,
         content: form.value.content,
-        visitorId: visitorStore.visitorId,
-        isMarkdown: form.value.isMarkdown ? 1 : 0
+          isMarkdown: form.value.isMarkdown ? 1 : 0
       })
-      ElMessage.success('修改成功')
+      if (!active) return
+      ElMessage.success('修改成功，需重新审核')
     } else {
       await submitMessage({
+        captchaId: captcha.value.captchaId,
+        captchaAnswer: form.value.captchaAnswer.trim(),
         content: form.value.content,
-        rootId: replyTarget.value?.rootId || replyTarget.value?.id || null,
         parentId: replyTarget.value?.id || null,
-        parentNickname: replyTarget.value?.nickname || null,
         nickname: form.value.nickname,
         emailOrQq: form.value.emailOrQq,
-        visitorId: visitorStore.visitorId,
-        isSecret: form.value.isSecret ? 1 : 0,
+          isSecret: form.value.isSecret ? 1 : 0,
         isNotice: form.value.isNotice ? 1 : 0,
         isMarkdown: form.value.isMarkdown ? 1 : 0
       })
+      if (!active) return
       ElMessage.success('留言成功，审核通过后将展示')
     }
     visitorStore.nickname = form.value.nickname
     visitorStore.email = form.value.emailOrQq
     resetForm()
-    loadCaptcha()
     await load()
   } catch {
     /* handled by interceptor */
   } finally {
+    if (!editTarget.value) loadCaptcha()
     submitting.value = false
   }
 }
@@ -178,11 +108,11 @@ const handleDelete = async (msg) => {
     return // 用户取消
   }
   try {
-    await deleteMessage(msg.id, visitorStore.visitorId)
+    await deleteMessage(msg.id)
     ElMessage.success('已删除')
     await load()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.msg || '删除失败')
+  } catch {
+    // The request layer reports the error; preserve current input.
   }
 }
 
@@ -191,7 +121,7 @@ const startReply = (msg) => {
   replyTarget.value = msg
   form.value.content = ''
   // 切换回复目标时清空历史校验提示
-  errors.value = { nickname: '', emailOrQq: '', content: '', captcha: '' }
+  errors.value = discussionErrors()
   document.querySelector('.msg-form')?.scrollIntoView({ behavior: 'smooth' })
 }
 
@@ -202,57 +132,26 @@ const startEdit = (msg) => {
     msg.content ?? (msg.contentHtml?.replace(/<[^>]+>/g, '') || '')
   form.value.isMarkdown = msg.isMarkdown === 1
   // 切换编辑时清空历史校验提示
-  errors.value = { nickname: '', emailOrQq: '', content: '', captcha: '' }
+  errors.value = discussionErrors()
   document.querySelector('.msg-form')?.scrollIntoView({ behavior: 'smooth' })
 }
 
 const resetForm = () => {
   replyTarget.value = null
   editTarget.value = null
-  form.value.content = ''
-  form.value.captchaAnswer = ''
-  form.value.isSecret = false
-  form.value.isNotice = true
-  form.value.isMarkdown = true
-  // 清空所有校验错误
-  errors.value = { nickname: '', emailOrQq: '', content: '', captcha: '' }
+  form.value = discussionDefaults(visitorStore.nickname, visitorStore.email)
+  errors.value = discussionErrors()
 }
 
-const isMine = (msg) =>
-  msg.visitorId && msg.visitorId === visitorStore.visitorId
+const isMine = (item) => item.isOwn === true
 
-/* 头像 */
-const getAvatarUrl = (msg) => {
-  // 如果是博主回复，使用个人信息的头像
-  if (msg.isAdminReply && blogStore.personalInfo?.avatar) {
-    return blogStore.personalInfo.avatar
-  }
-  const eq = msg.emailOrQq
-  if (!eq) return ''
-  if (/^\d{5,11}$/.test(eq)) return `https://q1.qlogo.cn/g?b=qq&nk=${eq}&s=640`
-  const m = eq.match(/^(\d{5,11})@qq\.com$/i)
-  if (m) return `https://q1.qlogo.cn/g?b=qq&nk=${m[1]}&s=640`
-  return ''
-}
-const getInitial = (name) => (name ? name.charAt(0).toUpperCase() : '?')
+const getAvatarUrl = (item) => discussionAvatar(item, blogStore.personalInfo)
+const fmtDate = fmtDiscussionDate
 
-const fmtDate = (d) => {
-  if (!d) return ''
-  // 格式化为 YYYY-MM-DD HH:mm
-  return d.slice(0, 16).replace('T', ' ')
-}
-
-const totalCount = computed(() => {
-  let n = 0
-  const count = (list) => {
-    list.forEach((m) => {
-      n++
-      if (m.children?.length) count(m.children)
-    })
-  }
-  count(messages.value)
-  return n
-})
+const totalCount = computed(() => messages.value.reduce((total, node) => total + 1 + (node.children?.length || 0), 0))
+const changeMessagePage = (page) => { messagePage.value = page; load() }
+watch(() => visitorStore.ready, (ready) => { if (ready) { load(); loadCaptcha() } })
+onUnmounted(() => { active = false; ++requestToken })
 
 onMounted(() => {
   articleTitle.value = '留言板'
@@ -288,6 +187,7 @@ onMounted(() => {
             <textarea
               ref="msgTextareaRef"
               v-model="form.content"
+              aria-label="留言正文"
               :class="[
                 'form-textarea',
                 { 'form-textarea-error': errors.content }
@@ -310,6 +210,7 @@ onMounted(() => {
                 <i class="iconfont icon-user input-icon" />
                 <input
                   v-model="form.nickname"
+                  aria-label="留言昵称"
                   type="text"
                   placeholder="昵称 *"
                   :class="[
@@ -329,6 +230,7 @@ onMounted(() => {
                 <i class="iconfont icon-youxiang input-icon" />
                 <input
                   v-model="form.emailOrQq"
+                  aria-label="留言邮箱或 QQ 号"
                   type="text"
                   placeholder="邮箱/QQ号"
                   :class="[
@@ -352,6 +254,7 @@ onMounted(() => {
                 <i class="iconfont icon-lock input-icon" />
                 <input
                   v-model="form.captchaAnswer"
+                  :aria-label="`验证码，${captcha.question}`"
                   placeholder="验证码"
                   :class="[
                     'form-input',
@@ -373,6 +276,10 @@ onMounted(() => {
                 </span>
                 <span
                   class="captcha-refresh"
+                  role="button"
+                  tabindex="0"
+                  @keydown.enter.prevent="loadCaptcha"
+                  @keydown.space.prevent="loadCaptcha"
                   @click="loadCaptcha"
                   title="换一题"
                   >↻</span
@@ -411,7 +318,7 @@ onMounted(() => {
 
         <!-- 留言数 -->
         <div class="msg-count">
-          <span>共 {{ totalCount }} 条留言</span>
+          <span>共 {{ messageTotal }} 条主留言，本页含回复 {{ totalCount }} 条</span>
         </div>
 
         <!-- 留言列表 -->
@@ -611,7 +518,9 @@ onMounted(() => {
           </template>
         </div>
 
-        <p v-if="!loading && !messages.length" class="empty">
+        <p v-if="loadError" role="alert">{{ loadError }} <button type="button" @click="load">重试</button></p>
+        <el-pagination v-if="messageTotal > 10" :current-page="messagePage" :page-size="10" :total="messageTotal" layout="prev, pager, next" @current-change="changeMessagePage" />
+        <p v-if="!loading && !messages.length && !loadError" class="empty">
           还没有留言，来写第一条吧
         </p>
       </div>

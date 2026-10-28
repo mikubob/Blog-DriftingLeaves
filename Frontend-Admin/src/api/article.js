@@ -14,8 +14,9 @@ export const getArticlePage = (params) =>
 export const getArticleById = (id) => http.get(`/admin/article/${id}`)
 
 /**
- * 创建文章
+ * 创建文章；HTTP/业务失败均拒绝，成功 Result.data 为新 ID，编辑器必须回填后再更新。
  * @param {ArticleDTO} data
+ * @returns {Promise<{code: number, data: number}>}
  */
 export const createArticle = (data) => http.post('/admin/article', data)
 

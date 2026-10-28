@@ -1,4 +1,7 @@
 <script setup>
+import { replyComment } from '@/api/comment'
+import { deleteComments } from '@/api/comment'
+import { approveComments } from '@/api/comment'
 import { ref, onMounted } from 'vue'
 import { useCommentStore } from '@/stores'
 import { useBatchSelection } from '@/composables/useBatchSelection'
@@ -41,14 +44,14 @@ const handleSizeChange = (s) => {
 
 /* ---- 通过 ---- */
 const approveOne = async (row) => {
-  await commentStore.approve([row.id])
+  await approveComments([row.id])
   ElMessage.success('已通过')
   load()
 }
 
 const batchApprove = async () => {
   if (!selected.value.length) return ElMessage.warning('请先选择评论')
-  await commentStore.approve(selected.value.map((r) => r.id))
+  await approveComments(selected.value.map((r) => r.id))
   ElMessage.success('批量通过成功')
   load()
 }
@@ -65,11 +68,11 @@ const deleteOne = async (row) => {
     return
   }
   try {
-    await commentStore.remove([row.id])
+    await deleteComments([row.id])
     ElMessage.success('删除成功')
     load()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.msg || '删除失败')
+  } catch {
+    // The request layer reports the error; preserve current input.
   }
 }
 
@@ -89,12 +92,12 @@ const batchDelete = async () => {
     return
   }
   try {
-    await commentStore.remove(selected.value.map((r) => r.id))
+    await deleteComments(selected.value.map((r) => r.id))
     clearSelection()
     ElMessage.success('批量删除成功')
     load()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.msg || '批量删除失败')
+  } catch {
+    // The request layer reports the error; preserve current input.
   }
 }
 
@@ -120,7 +123,7 @@ const openReply = (row) => {
 
 const submitReply = async () => {
   if (!replyContent.value.trim()) return ElMessage.warning('回复内容不能为空')
-  await commentStore.reply({
+  await replyComment({
     articleId: replyTarget.value.articleId,
     parentId: replyTarget.value.id,
     rootId: replyTarget.value.rootId || replyTarget.value.id,
@@ -323,7 +326,8 @@ onMounted(load)
           detailRow.userAgentBrowser ?? '-'
         }}</el-descriptions-item>
         <el-descriptions-item label="评论内容" :span="2">
-          <div v-html="detailRow.contentHtml || detailRow.content || '-'" />
+          <div v-if="detailRow.contentHtml" v-html="detailRow.contentHtml" />
+          <div v-else>{{ detailRow.content || '-' }}</div>
         </el-descriptions-item>
       </el-descriptions>
       <template #footer>

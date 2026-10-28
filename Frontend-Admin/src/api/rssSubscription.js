@@ -7,15 +7,6 @@ import http from '@/utils/request'
 export const getRssPage = (params) =>
   http.get('/admin/rssSubscription/page', { params })
 
-/** 获取所有激活订阅 */
-export const getAllActiveRss = () => http.get('/admin/rssSubscription')
-
-/**
- * 根据 ID 查询
- * @param {number} id
- */
-export const getRssById = (id) => http.get(`/admin/rssSubscription/${id}`)
-
 /**
  * 更新订阅状态
  * @param {Object} data

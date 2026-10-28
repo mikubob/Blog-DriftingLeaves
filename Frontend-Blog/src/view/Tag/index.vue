@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, inject, onMounted } from 'vue'
+import { ref, watch, inject, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { getArticlesByTag } from '@/api/tag'
 import { useBlogStore } from '@/stores'
@@ -17,28 +17,36 @@ const pageSize = 10
 const loading = ref(false)
 const tagName = ref('')
 
+let active = true
+let initialized = false
+let requestToken = 0
 const load = async () => {
+  if (!active) return
+  const token = ++requestToken
   const slug = route.params.slug
   const tagId = blogStore.getTagIdBySlug(slug)
   if (!tagId) {
     articles.value = []
     total.value = 0
+    loading.value = false
     return
   }
   loading.value = true
   try {
     const res = await getArticlesByTag(tagId, page.value, pageSize)
+    if (token !== requestToken) return
     const d = res.data.data
     articles.value = d.records ?? []
     total.value = d.total ?? 0
   } catch {
-    articles.value = []
+    // The request layer reports the failure; keep the last successful page.
   } finally {
-    loading.value = false
+    if (token === requestToken) loading.value = false
   }
 }
 
 const resolveName = () => {
+  if (!active) return
   const name = blogStore.getTagNameBySlug(route.params.slug)
   tagName.value = name
   articleTitle.value = name || '标签'
@@ -62,10 +70,16 @@ watch(
 
 onMounted(async () => {
   await blogStore.init()
+  if (!active) return
+  initialized = true
   resolveName()
   await load()
   resolveName()
 })
+watch(() => blogStore.tags, () => {
+  if (initialized) { resolveName(); load() }
+})
+onUnmounted(() => { active = false; ++requestToken })
 </script>
 
 <template>

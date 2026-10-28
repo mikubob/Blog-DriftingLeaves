@@ -11,6 +11,7 @@ import IconsResolver from 'unplugin-icons/resolver'
 // https://vite.dev/config/
 export default defineConfig({
   server: {
+    fs: { allow: [fileURLToPath(new URL('.', import.meta.url)), fileURLToPath(new URL('../Frontend-Shared', import.meta.url))] },
     proxy: {
       '/api': {
         target: 'http://localhost:5922',
@@ -48,7 +49,9 @@ export default defineConfig({
     })
   ],
   resolve: {
+    dedupe: ['vue'],
     alias: {
+      '@shared': fileURLToPath(new URL('../Frontend-Shared', import.meta.url)),
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
